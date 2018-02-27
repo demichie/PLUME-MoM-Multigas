@@ -245,7 +245,7 @@ CONTAINS
        ! interp temperature profile
        CALL interp_1d_scalar(h_levels(:), temp_atm_month_lat(:), z, ta)
 
-       IF ( z .LE. z_r ) THEN
+       IF ( ( z - vent_height ) .LE. z_r ) THEN
 
           u_atm = u_r * ( ( z - vent_height ) / z_r )**exp_wind
 
@@ -259,7 +259,7 @@ CONTAINS
           duatm_dz = 0.D0
 
        END IF
-
+       
        cos_theta = 1.D0
        sin_theta = 0.D0
 
@@ -270,7 +270,7 @@ CONTAINS
        ! u_atm = u_atm0 + duatm_dz * z 
        ! duatm_dz = duatm_dz0
 
-       IF ( z .LE. z_r ) THEN
+       IF ( ( z - vent_height ) .LE. z_r ) THEN
 
           u_atm = u_r * ( ( z - vent_height ) / z_r )**exp_wind
 
