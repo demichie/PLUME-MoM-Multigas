@@ -1,3 +1,6 @@
+#!/usr/bin/python
+
+
 import glob, os
 from input_file import *
 

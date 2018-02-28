@@ -58,7 +58,7 @@ echo "-------------- start postprocessing ---------------"
 
 echo "'PARTICLES &','### $0 ### &'" >LABELS.CFG
 
-${MDL}/exec/parxplot -i$PDUMP_PART -k1 -z20 -j${MDL}/graphics/arlmap
+${MDL}/exec/parxplot -i$PDUMP_PART -k1 -z20 -j${MDL}/graphics/arlmap -oparxplot_part.ps
 
 ${MDL}/exec/par2asc -i$PDUMP_PART -oPARDUMP_PART.txt 
     
@@ -72,7 +72,7 @@ ${MDL}/exec/concplot -i$DUMP_ACC_PART -j${MDL}/graphics/arlmap -s0 -t0 -z20 -d1 
 
 echo "'GAS &','### $0 ### &'" >LABELS.CFG
 
-${MDL}/exec/parxplot -i$PDUMP_GAS -k1 -z20 -j${MDL}/graphics/arlmap
+${MDL}/exec/parxplot -i$PDUMP_GAS -k1 -z20 -j${MDL}/graphics/arlmap -oparxplot_gas.ps
 
 ${MDL}/exec/par2asc -i$PDUMP_GAS -oPARDUMP_GAS.txt 
     

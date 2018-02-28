@@ -1929,6 +1929,8 @@ CONTAINS
     REAL*8 :: delta_angle
     REAL*8 :: dx , dy
 
+    REAL*8 :: vect(3) , vect0(3) , v(3)
+    
     ALLOCATE( x_col(col_lines) , y_col(col_lines) , z_col(col_lines) )
     ALLOCATE( r_col(col_lines) )
     ALLOCATE( solid_pmf(n_part,col_lines) )
@@ -2086,6 +2088,18 @@ CONTAINS
 
           END IF
 
+          vect(1) = x_top - x_bot
+          vect(2) = y_top - y_bot
+          vect(3) = z_top - z_bot
+
+          vect0(1) = 0
+          vect0(2) = 0
+          vect0(3) = 1
+
+          v = cross(vect0,vect)
+                   
+          vect = vect / NORM2( vect )
+          
           DO j=1,n_cloud
              
              start_angle =  DATAN2(sin_theta,cos_theta)
@@ -2387,5 +2401,16 @@ CONTAINS
 
   END SUBROUTINE check_hysplit
 
+  FUNCTION cross(a, b)
+    REAL*8, DIMENSION(3) :: cross
+    REAL*8, DIMENSION(3), INTENT(IN) :: a, b
+    
+    cross(1) = a(2) * b(3) - a(3) * b(2)
+    cross(2) = a(3) * b(1) - a(1) * b(3)
+    cross(3) = a(1) * b(2) - a(2) * b(1)
 
+  END FUNCTION cross
+
+
+  
 END MODULE inpout

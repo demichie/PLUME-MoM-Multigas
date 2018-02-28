@@ -300,17 +300,16 @@ def write_atm(time_input):
     nrows = a.shape[1]
 
     f=open('atm.txt','w')
-
     f.write(str(nrows)+'\n')
     f.close()
     
     f=open('atm.txt','a')
-
-    np.savetxt(f,a.transpose(),fmt='%.4e')
-
-    f=open('meteo_ground_elev.txt','w')
-    f.write(str(z_ground)+'\n')
+    np.savetxt(f,a.transpose(),fmt='%.4e')    
     f.close()
+
+    f1=open('meteo_ground_elev.txt','w')
+    f1.write(str(z_ground)+'\n')
+    f1.close()
 
     return 
 

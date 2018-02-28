@@ -1,5 +1,5 @@
-hysplit_dir = "/home/demichie/Codes/hysplit/trunk"
-plumemom_dir = "/home/demichie/Codes/PLUME-MoM-multigas"
+hysplit_dir = "/Users/demichie/Codes/Hysplit4/"
+plumemom_dir = "/Users/demichie/Codes/PLUME-MoM-multigas"
 runname = 'etna_test'
 starttime="15 12 03 10 00" # Year,month,day,hour,minute
 endemittime = "15 12 03 14 00"

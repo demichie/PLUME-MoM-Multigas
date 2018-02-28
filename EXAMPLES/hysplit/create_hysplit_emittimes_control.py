@@ -208,7 +208,7 @@ timei_str = timei.strftime("%Y %m %d %H")
 timei_str_mm = timei.strftime("%Y %m %d %H %M")
 
 data=np.loadtxt(plume_hy,skiprows=1)
-
+data=data.reshape((-1,int(3+npart)))    
 
 # data1: array containing data from .hy file, without x,z,h
 data1=np.delete(data, [0,1,2], 1)
@@ -330,6 +330,7 @@ for i in range(2,n_runs,1):
     subprocess.call('rm temp.hy', shell=True)
     # put the data in a numpy array
     data=np.asarray(data)
+    data=data.reshape((-1,int(3+npart)))    
 
     # data1: array containing data from .hy file, without x,z,h
     data1=np.delete(data, [0,1,2], 1)
@@ -436,7 +437,7 @@ if ( n_runs > 1):
     timei_str_mm = timei.strftime("%Y %m %d %H %M")
 
     data=np.loadtxt(plume_hy,skiprows=1)
-
+    data=data.reshape((-1,int(3+npart)))    
 
     # data1: array containing data from .hy file, without x,z,h
     data1=np.delete(data, [0,1,2], 1)
@@ -609,7 +610,7 @@ timei_str = timei.strftime("%Y %m %d %H")
 timei_str_mm = timei.strftime("%Y %m %d %H %M")
 
 data=np.loadtxt(plume_hy,skiprows=1)
-
+data=data.reshape((-1,int(3+ngas)))
 
 # data1: array containing data from .hy file, without x,z,h
 data1=np.delete(data, [0,1,2], 1)
@@ -731,6 +732,7 @@ for i in range(2,n_runs,1):
     subprocess.call('rm temp.hy', shell=True)
     # put the data in a numpy array
     data=np.asarray(data)
+    data=data.reshape((-1,int(3+ngas)))
 
     # data1: array containing data from .hy file, without x,z,h
     data1=np.delete(data, [0,1,2], 1)
@@ -837,7 +839,7 @@ if ( n_runs > 1):
     timei_str_mm = timei.strftime("%Y %m %d %H %M")
 
     data=np.loadtxt(plume_hy,skiprows=1)
-
+    data=data.reshape((-1,int(3+ngas)))
 
     # data1: array containing data from .hy file, without x,z,h
     data1=np.delete(data, [0,1,2], 1)
