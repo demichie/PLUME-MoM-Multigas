@@ -403,9 +403,9 @@ CONTAINS
   
        WRITE(*,*) 'WARNING: Fixed MER =',mass_flow_rate
 
-       IF ( r0 .EQ. 0.D0 ) THEN
+       IF ( r0 .EQ. -1.D0 ) THEN
 
-          IF ( w .EQ. 0.D0 ) THEN
+          IF ( w .EQ. -1.D0 ) THEN
      
              ! Equation 4 from Carazzo et al. 2008
              w = 138 * DSQRT( water_mass_fraction0 * 100.d0 )
