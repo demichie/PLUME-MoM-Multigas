@@ -1927,9 +1927,10 @@ CONTAINS
 
     REAL*8 :: angle_release , start_angle
     REAL*8 :: delta_angle
-    REAL*8 :: dx , dy
+    REAL*8 :: dx , dy , dz , dv(3) 
 
-    REAL*8 :: vect(3) , vect0(3) , v(3)
+    REAL*8 :: vect(3) , vect0(3) , v(3) , c , s
+    REAL*8 :: mat_v(3,3) , mat_R(3,3)
     
     ALLOCATE( x_col(col_lines) , y_col(col_lines) , z_col(col_lines) )
     ALLOCATE( r_col(col_lines) )
@@ -2025,21 +2026,15 @@ CONTAINS
 
     solid_tot(1:n_part) = 0.D0
 
-    WRITE(*,*) 'Solid mass released in the atmosphere at z_min (kg): ',z_min,SUM(solid_tot)
+    !WRITE(*,*) 'Solid mass released in the atmosphere at z_min (kg/s): ',z_min,SUM(solid_tot)
 
 
     DO i = 1,n_hy
-
-
    
        z_bot = z_min + (i-1) * hy_deltaz
        z_top = z_min + i * hy_deltaz
 
        z = z_bot 
-
-       CALL zmet
-
-       ! WRITE(*,*) 'wind',u_atm,DATAN2(sin_theta,cos_theta)
 
        DO j = 1,n_part
 
@@ -2057,12 +2052,7 @@ CONTAINS
           
           delta_solid(j) = solid_bot - solid_top
 
-         
-
        END DO
-
-       ! WRITE(*,*) 'delta_solid',SUM(delta_solid)
-
 
        IF ( n_cloud .EQ. 1 ) THEN
           
@@ -2077,7 +2067,9 @@ CONTAINS
                0.5D0 * ( z_top + z_bot ) , delta_solid(1:n_part)
           
        ELSE
-       
+
+          CALL zmet
+          
           IF ( u_atm .LT. 1.0D-1 ) THEN
    
              delta_angle = 2.D0*pi_g/n_cloud
@@ -2092,35 +2084,61 @@ CONTAINS
           vect(2) = y_top - y_bot
           vect(3) = z_top - z_bot
 
+          vect = vect / NORM2( vect )
+
           vect0(1) = 0
           vect0(2) = 0
           vect0(3) = 1
 
           v = cross(vect0,vect)
-                   
-          vect = vect / NORM2( vect )
+
+          s = NORM2(v)
+   
+          c = DOT_PRODUCT(vect0,vect)
+
+          mat_v = 0.D0
+          mat_v(2,1) = v(3)
+          mat_v(1,2) = -v(3)
+          
+          mat_v(3,1) = -v(2)
+          mat_v(1,3) = v(2)
+          
+          mat_v(2,3) = -v(1)
+          mat_v(3,2) = v(1);
+
+          mat_R = 0.D0
+
+          FORALL(j = 1:3) mat_R(j,j) = 1.D0           
+          mat_R = mat_R + mat_v + mat_v**2 * ( 1.D0-c ) / s**2
           
           DO j=1,n_cloud
              
              start_angle =  DATAN2(sin_theta,cos_theta)
              angle_release = (j-1) * delta_angle - 0.5D0*pi_g
 
-             dx = 0.5* ( r_bot + r_top ) * DCOS(start_angle + angle_release)
-             dy = 0.5* ( r_bot + r_top ) * DSIN(start_angle + angle_release)
+             dx = 0.5D0* ( r_bot + r_top ) * DCOS(start_angle + angle_release)
+             dy = 0.5D0* ( r_bot + r_top ) * DSIN(start_angle + angle_release)
+             dz = 0.D0
+             dv(1) = dx
+             dv(2) = dy
+             dv(3) = dz
 
-             !WRITE(*,*) 'dx,dy',dx,dy,start_angle,angle_release
-             !READ(*,*)
+             dx = DOT_PRODUCT(mat_R(1,1:3),dv) 
+             dy = DOT_PRODUCT(mat_R(2,1:3),dv) 
+             dz = DOT_PRODUCT(mat_R(3,1:3),dv) 
              
              IF ( verbose_level .GE. 1 ) THEN
                 
                 WRITE(*,110)  0.5D0 * ( x_top + x_bot ) + dx ,                  &
-                     0.5D0 * ( y_top + y_bot ) + dy , 0.5D0 * ( z_top + z_bot ),&
+                     0.5D0 * ( y_top + y_bot ) + dy ,                           &
+                     0.5D0 * ( z_top + z_bot ) + dz ,                           &
                      delta_solid(1:n_part)/n_cloud
                 
              END IF
              
              WRITE(hy_unit,110)   0.5D0 * ( x_top + x_bot ) + dx ,              &
-                  0.5D0 * ( y_top + y_bot ) + dy , 0.5D0 * ( z_top + z_bot ) ,  &
+                  0.5D0 * ( y_top + y_bot ) + dy ,                              &
+                  0.5D0 * ( z_top + z_bot ) + dz ,                              &
                   delta_solid(1:n_part)/n_cloud
              
           END DO
@@ -2128,11 +2146,13 @@ CONTAINS
        END IF
        
        solid_tot(1:n_part) = solid_tot(1:n_part) + delta_solid(1:n_part)
-       !WRITE(*,*) 'Solid mass released in the atmosphere (kg): ', 0.5D0 * ( z_top + z_bot ) , SUM(solid_tot)
+       !WRITE(*,*) 'Solid mass released in the atmosphere (kg/s): ', 0.5D0 * ( z_top + z_bot ) , SUM(solid_tot)
        !READ(*,*)
 
     END DO
 
+    ! WRITE THE RELEASE FROM THE MIDDLE OF LAST INTERVAL 
+    
     z_bot = z_min + n_hy * hy_deltaz
     z_top = z_max
     
@@ -2155,18 +2175,10 @@ CONTAINS
 
     END DO
 
-    WRITE(*,*) 'cloud_solid(j) : ',solid_top
-
+   
     solid_tot(1:n_part) = solid_tot(1:n_part) + delta_solid(1:n_part)
-
-
-
-     !READ(*,*)
     solid_tot(1:n_part) = solid_tot(1:n_part) + cloud_solid(1:n_part)
-     WRITE(*,*) 'Solid mass released in the atmosphere (kg): ',SUM(solid_tot)
- 
-    ! WRITE(*,*) 'n_cloud',n_cloud
-
+     
     IF ( n_cloud .EQ. 1 ) THEN
    
        IF ( verbose_level .GE. 1 ) THEN
@@ -2190,7 +2202,39 @@ CONTAINS
           delta_angle = pi_g / ( n_cloud - 1.D0 )
           
        END IF
-              
+       
+       vect(1) = x_top - x_bot
+       vect(2) = y_top - y_bot
+       vect(3) = z_top - z_bot
+       
+       vect = vect / NORM2( vect )
+       
+       vect0(1) = 0
+       vect0(2) = 0
+       vect0(3) = 1
+       
+       v = cross(vect0,vect)
+       
+       s = NORM2(v)
+       
+       c = DOT_PRODUCT(vect0,vect)
+       
+       mat_v = 0.D0
+       mat_v(2,1) = v(3)
+       mat_v(1,2) = -v(3)
+       
+       mat_v(3,1) = -v(2)
+       mat_v(1,3) = v(2)
+       
+       mat_v(2,3) = -v(1)
+       mat_v(3,2) = v(1);
+       
+       mat_R = 0.D0
+       
+       FORALL(j = 1:3) mat_R(j,j) = 1.D0           
+       mat_R = mat_R + mat_v + mat_v**2 * ( 1.D0-c ) / s**2
+       
+       
        DO i=1,n_cloud
           
           start_angle =  DATAN2(sin_theta,cos_theta)
@@ -2198,23 +2242,36 @@ CONTAINS
           
           dx = 0.5* ( r_bot + r_top ) * DCOS(start_angle + angle_release)
           dy = 0.5* ( r_bot + r_top ) * DSIN(start_angle + angle_release)
+
+          dz = 0.D0
+          dv(1) = dx
+          dv(2) = dy
+          dv(3) = dz
+          
+          dx = DOT_PRODUCT(mat_R(1,1:3),dv) 
+          dy = DOT_PRODUCT(mat_R(2,1:3),dv) 
+          dz = DOT_PRODUCT(mat_R(3,1:3),dv) 
           
           IF ( verbose_level .GE. 1 ) THEN
              
-             WRITE(*,110)  0.5D0 * ( x_top + x_bot ) + dx ,                     &
-                  0.5D0 * ( y_top + y_bot ) + dy , z_top ,                      &
+             WRITE(*,110)  0.5D0 * ( x_top + x_bot ) + dx ,                  &
+                  0.5D0 * ( y_top + y_bot ) + dy ,                           &
+                  0.5D0 * ( z_top + z_bot ) + dz ,                           &
                   delta_solid(1:n_part)/n_cloud
              
           END IF
           
-          WRITE(hy_unit,110)   0.5D0 * ( x_top + x_bot ) + dx ,                 &
-               0.5D0 * ( y_top + y_bot ) + dy , z_top ,                         &
+          WRITE(hy_unit,110)   0.5D0 * ( x_top + x_bot ) + dx ,              &
+               0.5D0 * ( y_top + y_bot ) + dy ,                              &
+               0.5D0 * ( z_top + z_bot ) + dz ,                              &
                delta_solid(1:n_part)/n_cloud
-          
+                    
        END DO
        
     END IF
 
+    ! WRITE THE RELEASE AT THE TOP OF THE COLUMN (OR NBL.)
+    
     IF ( n_cloud .EQ. 1 ) THEN
 
        IF ( verbose_level .GE. 1 ) THEN
@@ -2244,15 +2301,25 @@ CONTAINS
           
           dx = 0.5* ( r_bot + r_top ) * DCOS(start_angle + angle_release)
           dy = 0.5* ( r_bot + r_top ) * DSIN(start_angle + angle_release)
+          dz = 0.D0
+          dv(1) = dx
+          dv(2) = dy
+          dv(3) = dz
           
+          dx = DOT_PRODUCT(mat_R(1,1:3),dv) 
+          dy = DOT_PRODUCT(mat_R(2,1:3),dv) 
+          dz = DOT_PRODUCT(mat_R(3,1:3),dv) 
+   
           
           IF ( verbose_level .GE. 1 ) THEN
 
-             WRITE(*,110) x_top+dx , y_top+dy , z_top , cloud_solid(1:n_part)/n_cloud
+             WRITE(*,110) x_top+dx , y_top+dy , z_top+dz ,                      &
+                  cloud_solid(1:n_part)/n_cloud
              
           END IF
           
-          WRITE(hy_unit,110) x_top+dx , y_top+dy , z_top , cloud_solid(1:n_part)/n_cloud
+          WRITE(hy_unit,110) x_top+dx , y_top+dy , z_top+dz ,                   &
+               cloud_solid(1:n_part)/n_cloud
           
        END DO
 
@@ -2260,7 +2327,7 @@ CONTAINS
 
 
     ! WRITE(*,*) 'z_max',z_max
-    WRITE(*,*) 'Solid mass released in the atmosphere (kg): ',SUM(solid_tot)
+    WRITE(*,*) 'Solid mass released in the atmosphere (kg/s): ',SUM(solid_tot)
 
 
 
@@ -2305,11 +2372,6 @@ CONTAINS
   
     n_hy = FLOOR( ( z_max - z_min ) / hy_deltaz )
 
-    
-
-    !WRITE(*,*) 'Solid mass released in the atmosphere (kg): ',z_min,SUM(solid_tot)
-
-
     z_bot = z_min + n_hy * hy_deltaz
     z_top = z_max
 
@@ -2333,8 +2395,8 @@ CONTAINS
 
     END DO
   
-    WRITE(*,*) 'cloud_gas(j) : ',gas_top
-    WRITE(*,*) 'cloud_gas(1:n_gas) : ',cloud_gas(1:n_gas)
+    !WRITE(*,*) 'cloud_gas(j) : ',gas_top
+    !WRITE(*,*) 'cloud_gas(1:n_gas) : ',cloud_gas(1:n_gas)
 
 
     IF ( n_cloud .EQ. 1 ) THEN
@@ -2381,22 +2443,11 @@ CONTAINS
     END IF
 
 
-    ! WRITE(*,*) 'z_max',z_max
-    !WRITE(*,*) 'Gas mass released in the atmosphere (kg): ',SUM(solid_tot)
-
-
-
 207 FORMAT(1x,'     x (m)     ',1x,'      y (m)    ', 1x,'     z (m)     ')
     
 208 FORMAT(2x,A)
     
 210 FORMAT(33(1x,e15.8))
-
-
-
-
-
-
 
 
   END SUBROUTINE check_hysplit
