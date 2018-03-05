@@ -491,9 +491,6 @@ CONTAINS
 
 
   SUBROUTINE eval_temp(enth,pres,cpsolid,temp,wv_mf)
-
-
-
    
     USE meteo_module, ONLY : cpair , T_ref , h_wv0 , c_wv , h_lw0 , c_lw ,       &
          da_mol_wt , wv_mol_wt
@@ -600,16 +597,16 @@ CONTAINS
 
     
 
-    !volcgas_mix_mol_wt = SUM( volcgas_mass_fraction(1:n_gas) ) /                &
-    !     SUM( volcgas_mass_fraction(1:n_gas) / volcgas_mol_wt(1:n_gas ) ) 
+    volcgas_mix_mol_wt = SUM( volcgas_mass_fraction(1:n_gas) ) /                &
+         SUM( volcgas_mass_fraction(1:n_gas) / volcgas_mol_wt(1:n_gas ) ) 
 
-     !WRITE(*,*) '--->volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
-     !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt
-     !WRITE(*,*) '--->water_vapor_mass_fraction',water_vapor_mass_fraction
-     !WRITE(*,*) '--->wv_mol_wt ', wv_mol_wt 
-     !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt    
-     !WRITE(*,*) '--->dry_air_mass_fraction',dry_air_mass_fraction
-     !!READ(*,*)
+    !WRITE(*,*) '--->volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
+    !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt
+    !WRITE(*,*) '--->water_vapor_mass_fraction',water_vapor_mass_fraction
+    !WRITE(*,*) '--->wv_mol_wt ', wv_mol_wt 
+    !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt    
+    !WRITE(*,*) '--->dry_air_mass_fraction',dry_air_mass_fraction
+    !READ(*,*)
 
     IF ( n_gas .GT. 0) THEN
 
@@ -645,7 +642,6 @@ CONTAINS
     
   
      !WRITE(*,*)  dry_air_mass_fraction , water_vapor_mass_fraction
-
      !WRITE(*,*) 'wv_mol_fract',wv_mol_fract
      !WRITE(*,*) 'da_mol_fract',da_mol_fract
      !WRITE(*,*) 'volcgas_mix_mol_fract',volcgas_mix_mol_fract
@@ -656,9 +652,11 @@ CONTAINS
          ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction * cpsolid    &
          + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv   &
          +  volcgas_mix_mass_fraction * cpvolcgas_mix)
-    
-    !WRITE(*,*) 'temp0',temp0
 
+    !WRITE(*,*)  'enth',enth 
+    !WRITE(*,*) 'temp0',temp0
+    !READ(*,*)
+    
     IF ( temp0 .GT. 29.65D0 ) THEN
 
        IF ( temp0 .LT. 273.16D0 ) THEN

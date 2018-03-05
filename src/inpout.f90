@@ -23,9 +23,8 @@ MODULE inpout
 
     USE particles_module, ONLY : aggregation_flag
     
-    USE meteo_module, ONLY: gt , gs , p0 , t0 , h1 , h2 , u_atm0 , duatm_dz0 ,  &
-         visc_atm0 , rair , cpair , read_atm_profile , u_r , z_r , exp_wind ,   &
-         wind_mult_coeff ,rwv
+    USE meteo_module, ONLY: gt , gs , p0 , t0 , h1 , h2 , visc_atm0 , rair ,    &
+         cpair , read_atm_profile , u_r , z_r , exp_wind , wind_mult_coeff ,rwv
 
     USE solver_module, ONLY: ds0
 
@@ -137,8 +136,8 @@ MODULE inpout
   NAMELIST / atm_parameters / visc_atm0 , rair , cpair , wind_mult_coeff ,      &
        read_atm_profile , settling_model , shape_factor
   
-  NAMELIST / std_atm_parameters / gt , gs , p0 , t0 , h1 , h2 , u_atm0 ,        &
-       duatm_dz0 , u_r , z_r , exp_wind
+  NAMELIST / std_atm_parameters / gt , gs , p0 , t0 , h1 , h2 , u_r , z_r ,     &
+       exp_wind
   
   NAMELIST / table_atm_parameters / month , lat , u_r , z_r , exp_wind
 
@@ -241,9 +240,10 @@ CONTAINS
        t0 = 288.15D0             ! Temperature at sea level
        h1 = 11.D3
        h2 = 20.D3
-       u_atm0 = 0.D0
-       duatm_dz0 = 0.D0
-
+       u_r = 0.D0
+       z_r = 0.D0
+       exp_wind = 0.D0
+ 
        !---------- parameters of the INITIAL_VALUES namelist --------------------
 
        R0 = 0.D0 
@@ -993,7 +993,7 @@ CONTAINS
 
     IF ( distribution .EQ. 'constant' ) THEN
 
-       n_mom = 4
+       n_mom = 2
        n_nodes = 1
 
     ELSE
@@ -1199,6 +1199,7 @@ CONTAINS
        READ(inp_unit, constant_parameters)
        WRITE(bak_unit, constant_parameters)
 
+       WHERE(diam_constant_phi .EQ. 0.D0) diam_constant_phi=1.D-5
        diam_constant = 1.D-3 * 2.D0**(-diam_constant_phi)
 
     END IF
@@ -1288,7 +1289,10 @@ CONTAINS
 
                 END DO
 
-             ELSE
+             ELSEIF ( distribution .EQ. 'constant' ) THEN
+
+                mom0(i_part,i) = diam_constant_phi(i_part)**i
+
 
              END IF
 
@@ -1402,9 +1406,6 @@ CONTAINS
        WRITE(*,*) 'gas_mass_fraction',gas_mass_fraction
        WRITE(*,*) 'solid_mass_fractions',solid_mass_fraction(1:n_part)
 
-       WRITE(*,*) 1.D0 / ( gas_mass_fraction / rho_gas + SUM( solid_mass_fraction(1:n_part) /  rho_solid_avg(1:n_part) ) )
-
-       
     END IF
     
     IF ( ( log10_mfr .GT. 0.d0 ) .AND. ( r0 .GT. 0.d0 ) .AND. ( w0 .EQ. 0.D0 ) ) THEN
@@ -1429,16 +1430,13 @@ CONTAINS
        ! the coefficient C0 (=mom0) for the particles size distribution is
        ! evaluated in order to have the corrected volume or mass fractions
 
-       ! initialization only
-       C0 = 1.D0
-
        IF ( distribution_variable .EQ. 'particles_number' ) THEN
 
           C0 = 6.D0 / pi_g * solid_volume_fraction0(i_part) / mom0(i_part,3)
           
        ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
           
-          C0 = ( 1.D0 - water_mass_fraction0 ) / mom0(i_part,0) *                 &
+          C0 = SUM(solid_mass_fraction(1:n_part)) / mom0(i_part,0) *            &
                solid_partial_mass_fraction(i_part)
       
        END IF
@@ -1455,12 +1453,14 @@ CONTAINS
 
        IF ( verbose_level .GE. 1 ) THEN
 
-          WRITE(*,*) 'i_part =',i_part 
+          WRITE(*,*) 'i_part =',i_part
+          WRITE(*,*) 'tot solid_mass_fract', SUM(solid_mass_fraction(1:n_part))
           WRITE(*,*) 'alfa_s',i_part,alfa_s
           WRITE(*,*) 'solid_volume_fraction0',solid_volume_fraction0(i_part)
           WRITE(*,*) 'solid_partial_mass_fract',                                &
                solid_partial_mass_fraction(i_part)
           WRITE(*,*) 'solid_mass_fract', solid_mass_fraction(i_part)
+          WRITE(*,*) mom0(i_part,1:n_mom-1)
           WRITE(*,*) 
 
        END IF

@@ -32,12 +32,6 @@ MODULE meteo_module
   !> Top height of the tropopause
   REAL*8 :: h2    
   
-  !> Horizontal wind speed at sea level
-  REAL*8 :: u_atm0
-  
-  !> Wind speed gradient
-  REAL*8 :: duatm_dz0  
-
   !> Wind angle
   REAL*8 :: cos_theta , sin_theta
 
@@ -266,28 +260,31 @@ CONTAINS
 
     ELSEIF ( read_atm_profile .EQ. 'standard' ) THEN
 
-
-       ! u_atm = u_atm0 + duatm_dz * z 
-       ! duatm_dz = duatm_dz0
-
-       IF ( ( z - vent_height ) .LE. z_r ) THEN
-
-          u_atm = u_r * ( ( z - vent_height ) / z_r )**exp_wind
-
-          duatm_dz =  ( exp_wind * u_r * ( ( z - vent_height ) / z_r )         &
-               ** ( exp_wind - 1.D0 ) ) * ( 1.D0 / z_r )
-
-       ELSE
+       IF ( ( z_r .LE. 0.D0 ) .OR. ( exp_wind .LE. 0.D0 ) ) THEN
 
           u_atm = u_r
-
           duatm_dz = 0.D0
+
+       ELSE
+          IF ( ( z - vent_height ) .LT. z_r ) THEN
+
+             u_atm = u_r * ( ( z - vent_height ) / z_r )**exp_wind
+             
+             duatm_dz =  ( exp_wind * u_r * ( ( z - vent_height ) / z_r )       &
+                  ** ( exp_wind - 1.D0 ) ) * ( 1.D0 / z_r )
+             
+          ELSE
+             
+             u_atm = u_r            
+             duatm_dz = 0.D0
+             
+          END IF
 
        END IF
        
+       
        cos_theta = 1.D0
        sin_theta = 0.D0
-
 
        !      
        ! ... Temperature and pressure at the tropopause bottom

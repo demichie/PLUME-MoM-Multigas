@@ -191,8 +191,8 @@ CONTAINS
 
     END IF
 
-
-     IF ( beta_inp .LE. 0.d0 ) THEN 
+    !---- Crosswind entrainment coefficient
+    IF ( beta_inp .LE. 0.d0 ) THEN 
 
        beta_p = 0.0D0
 
@@ -210,6 +210,7 @@ CONTAINS
 
     IF ( distribution_variable .EQ. "particles_number" ) THEN
 
+       ! See Eq. 20 PlumeMoM- GMD
        solid_term = SUM( solid_volume_fraction(1:n_part) *                      &
             set_rhop_mom(1:n_part,3) )
 
@@ -294,13 +295,13 @@ CONTAINS
           IF ( distribution_variable .EQ. "particles_number" ) THEN
 
              !---- Momentum equation RHS term (Eq. 16 PlumeMoM - GMD)
-             rhs_(8+i+(i_part-1)*n_mom) = - prob_factor * 2.D0 * r *            &
+             rhs_(8+i+(i_part-1)*n_mom) = - 2.D0 * prob_factor * r *            &
                   set_mom(i_part,i) * mom(i_part,i) 
 
           ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
 
              !---- Momentum equation RHS term (Eq. 32 PlumeMoM - GMD)
-             rhs_(8+i+(i_part-1)*n_mom) = - prob_factor * 2.D0 * r *            &
+             rhs_(8+i+(i_part-1)*n_mom) = - 2.D0 * prob_factor * r *            &
                   rho_mix * set_mom(i_part,i) * mom(i_part,i)
 
           END IF
@@ -451,7 +452,7 @@ CONTAINS
 
           IF ( fnew(8+i_mom+(i_part-1)*n_mom) .LE. 0.D0 ) THEN
 
-             IF ( distribution_variable .EQ. 'particle_moments' ) THEN
+             IF ( distribution_variable .EQ. 'particles_number' ) THEN
 
                 WRITE(*,*) 'WARNING: negative moment, part',i_part,'mom',i_mom
                 
@@ -678,7 +679,7 @@ CONTAINS
 
        END IF
 
-       IF ( verbose_level .GT. 2 ) THEN
+       IF ( verbose_level .GE. 2 ) THEN
 
           WRITE(*,*) 'rhoB_solid_U_r2',idx1,rhoB_solid_U_r2(i_part)
           WRITE(*,*) 'part_dens_array(i_part,:)',part_dens_array(i_part,:)
@@ -715,6 +716,7 @@ CONTAINS
 
     enth =  f_(4) / f_(1) - gi * z - 0.5D0 * mag_u**2 
 
+    
     ! --- Compute  water vapor mass fraction from other variables --------------
     CALL eval_temp(enth,pa,cpsolid,tp,wv_mf)
 
@@ -735,9 +737,10 @@ CONTAINS
     ! density of mixture of other volcanic gases (no H2O)
     rhovolcgas_mix = pa / ( rvolcgas_mix * tp )
 
-    IF ( verbose_level .GT. 2 ) THEN
+    IF ( verbose_level .GE. 2 ) THEN
 
        WRITE(*,*) '************** UNLUMP ***************'
+       WRITE(*,*) 'pa,tp',pa,tp
        WRITE(*,*) 'rgasmix',rgasmix
     
        WRITE(*,*) 'rho_gas,rhovolcgas_mix',rho_gas,rhovolcgas_mix

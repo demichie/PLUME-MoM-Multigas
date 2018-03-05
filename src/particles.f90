@@ -283,7 +283,7 @@ CONTAINS
     END IF
 
     rhop = particles_density(i_part,diam_in)
-
+    
     IF ( settling_model .EQ. 'textor' ) THEN
 
        ! Textor et al. 2006
@@ -972,6 +972,14 @@ CONTAINS
 
           END IF
 
+          IF ( verbose_level .GE. 2 ) THEN
+
+             WRITE(*,*) 'i_part,i_mom',i_part,i
+             WRITE(*,*) 'abscissas', xi(i_part,1:n_nodes)
+             WRITE(*,*) 'set_mom(i_part,i_mom) = ',set_mom(i_part,i)
+
+          END IF
+             
        END DO
 
     END DO
