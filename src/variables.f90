@@ -41,6 +41,9 @@ MODULE variables
 
   LOGICAL :: inversion_flag
 
+  !> Flag for water  
+  LOGICAL :: water_flag
+
   LOGICAL :: write_flag
 
   REAL*8 :: height_obj 

@@ -35,7 +35,7 @@ CONTAINS
     USE meteo_module, ONLY : rho_atm , rair
     USE mixture_module, ONLY : gas_mass_fraction , rho_mix, mass_flow_rate ,    &
          rgasmix , rvolcgas_mix ,water_vapor_mass_fraction , volcgas_mix_mass_fraction , &
-         water_mass_fraction,liquid_water_mass_fraction, dry_air_mass_fraction
+         water_mass_fraction,liquid_water_mass_fraction, dry_air_mass_fraction, ice_mass_fraction
     USE particles_module, ONLY : n_part , mom0 , mom
     USE particles_module, ONLY : distribution_variable
     USE particles_module, ONLY : solid_partial_mass_fraction
@@ -664,8 +664,9 @@ CONTAINS
        WRITE(*,*) 'Gas mass fraction (volcgas, water vapor, dry air) =',gas_mass_fraction
        WRITE(*,*) 'Solid_mass_fraction  =',mass_fract 
        WRITE(*,*) 'Liquid water mass fraction =',liquid_water_mass_fraction
+       WRITE(*,*) 'Ice mass fraction =',ice_mass_fraction
        WRITE(*,*)
-       WRITE(*,*) 'Water mass fraction (water vapor + liquid water) =',water_mass_fraction
+       WRITE(*,*) 'Water mass fraction (water vapor + liquid water + ice) =',water_mass_fraction
        WRITE(*,*)
 
     END IF

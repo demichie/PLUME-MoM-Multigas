@@ -104,6 +104,9 @@ MODULE mixture_module
   !> mass fraction of water vapor in the mixture
   REAL*8 :: water_vapor_mass_fraction
 
+  !> mass fraction of ice in the mixture
+  REAL*8 :: ice_mass_fraction
+
   REAL*8 :: volcgas_mix_mol_fract
 
   REAL*8 :: volcgas_mix_mol_wt
@@ -238,6 +241,7 @@ CONTAINS
     ! ---- We assume all volcanic H2O at the vent is water vapor 
     water_vapor_mass_fraction = water_mass_fraction0
     liquid_water_mass_fraction = 0.D0
+    ice_mass_fraction = 0.D0
 
     ! ---- No air is entrained
     dry_air_mass_fraction = 0.D0
@@ -490,10 +494,12 @@ CONTAINS
   END SUBROUTINE eval_wv
 
 
-  SUBROUTINE eval_temp(enth,pres,cpsolid,temp,wv_mf)
+  SUBROUTINE eval_temp(enth,pres,cpsolid,temp,wv_mf,ice_mf)
    
-    USE meteo_module, ONLY : cpair , T_ref , h_wv0 , c_wv , h_lw0 , c_lw ,       &
+    USE meteo_module, ONLY : cpair , T_ref , h_wv0 , c_wv , c_ice, h_lw0 , c_lw ,       &
          da_mol_wt , wv_mol_wt
+
+    USE variables, ONLY : water_flag 
 
     ! USE meteo_module
 
@@ -510,8 +516,11 @@ CONTAINS
     !> mixture temperature in K
     REAL*8, INTENT(OUT) :: temp
 
-    ! Mass fraction of liquid water in the mixture
+    ! Mass fraction of water vapour in the mixture
     REAL*8, INTENT(OUT) :: wv_mf
+
+    ! Mass fraction of ice in the mixture
+    REAL*8, INTENT(OUT) :: ice_mf
 
     !> water vapor molar fraction
     REAL*8 :: wv_mol_fract
@@ -519,43 +528,58 @@ CONTAINS
     !> dry air molar fraction
     REAL*8 :: da_mol_fract
 
-    !> saturation pressure (hPa)
+    !> saturation pressure of vapour over liquid (hPa)
     REAL*8 :: el
+
+    !> to compute the saturation pressure of vapour over ice
+    REAL*8 :: es_0
+
+    !> saturation pressure of vapour over ice (hPa)
+    REAL*8 :: es
 
     !> pressure in hPa
     REAL*8 :: hPres
 
-    REAL*8 :: lw_mf0 , lw_mf1 , lw_mf2
+    REAL*8 :: lw_mf0 , lw_mf1 , lw_mf2, lw_mf3, ice_mf2, ice_mf3, ice_mf1
 
-    REAL*8 :: f0,f1,f2
+    REAL*8 :: f0, f1, f2, f3
    
-    REAL*8 :: temp0 , temp1 , temp2
+    REAL*8 :: temp0 , temp1 , temp2, temp3
 
     hPres = pres / 100.D0
 
 
 
-    ! WRITE(*,*) 'water_mass_fraction', water_mass_fraction
-    ! WRITE(*,*) 'volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
-    ! WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
-    ! WRITE(*,*) 'water_vapor_mass_fraction', water_vapor_mass_fraction
+     !WRITE(*,*) 'water_mass_fraction', water_mass_fraction
+     !WRITE(*,*) 'volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
+     !WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
+     !WRITE(*,*) 'water_vapor_mass_fraction', water_vapor_mass_fraction
+     !WRITE(*,*) 'liquid_water_mass_fraction', liquid_water_mass_fraction
+     !WRITE(*,*) 'ice_mass_fraction', ice_mass_fraction
 
-    ! WRITE(*,*)
-    !WRITE(*,*) '************** EVAL TEMP **************' 
+     !WRITE(*,*)
+     !WRITE(*,*) '************** EVAL TEMP **************' 
+
+    IF ( water_flag ) THEN
+
 
     IF ( dry_air_mass_fraction .EQ. 0.D0 ) THEN
 
 
        liquid_water_mass_fraction = 0.D0
-       water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction 
+
+       ice_mass_fraction = 0.D0
+
+       water_vapor_mass_fraction = water_mass_fraction 
 
        temp = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw * T_ref )       &
             - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /             &
             ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction * cpsolid    &
             + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv   &
-            +  volcgas_mix_mass_fraction * cpvolcgas_mix)
+            + ice_mass_fraction * c_ice +  volcgas_mix_mass_fraction * cpvolcgas_mix)
        
-       wv_mf = water_mass_fraction - liquid_water_mass_fraction
+       wv_mf = 0.D0
+       ice_mf = 0.D0
 
         !WRITE(*,*)  dry_air_mass_fraction , cpair , solid_tot_mass_fraction ,       &
         !    cpsolid , water_vapor_mass_fraction , liquid_water_mass_fraction ,     &
@@ -566,7 +590,8 @@ CONTAINS
         !WRITE(*,*) 'cpvolcgas_mix',cpvolcgas_mix      
         !WRITE(*,*) 'temp',temp
         !WRITE(*,*) 'wv_mf',wv_mf
-        !!READ(*,*)
+        !WRITE(*,*) 'ice_mf',ice_mf
+        !READ(*,*)
 
        RETURN
 
@@ -593,9 +618,10 @@ CONTAINS
     lw_mf0 = water_mass_fraction 
 
     liquid_water_mass_fraction = lw_mf0
+
     water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction
 
-    
+    ice_mass_fraction = water_mass_fraction - liquid_water_mass_fraction    
 
     volcgas_mix_mol_wt = SUM( volcgas_mass_fraction(1:n_gas) ) /                &
          SUM( volcgas_mass_fraction(1:n_gas) / volcgas_mol_wt(1:n_gas ) ) 
@@ -603,6 +629,8 @@ CONTAINS
     !WRITE(*,*) '--->volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
     !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt
     !WRITE(*,*) '--->water_vapor_mass_fraction',water_vapor_mass_fraction
+    !WRITE(*,*) '--->liquid_water_mass_fraction',liquid_water_mass_fraction
+    !WRITE(*,*) '--->ice_mass_fraction',ice_mass_fraction
     !WRITE(*,*) '--->wv_mol_wt ', wv_mol_wt 
     !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt    
     !WRITE(*,*) '--->dry_air_mass_fraction',dry_air_mass_fraction
@@ -651,7 +679,7 @@ CONTAINS
          - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /             &
          ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction * cpsolid    &
          + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv   &
-         +  volcgas_mix_mass_fraction * cpvolcgas_mix)
+         +  volcgas_mix_mass_fraction * cpvolcgas_mix + c_ice * ice_mass_fraction )
 
     !WRITE(*,*)  'enth',enth 
     !WRITE(*,*) 'temp0',temp0
@@ -659,27 +687,44 @@ CONTAINS
     
     IF ( temp0 .GT. 29.65D0 ) THEN
 
-       IF ( temp0 .LT. 273.16D0 ) THEN
+       IF ( temp0 .GT. 273.16D0 ) THEN
           
           el = 6.112D0 * DEXP( 17.67D0 * ( temp0 - 273.16D0 ) / ( temp0 - 29.65D0 ) )
 
-       ELSE
+          f0 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el * volcgas_mix_mol_fract
+
+       ELSEIF ( temp0 .LT. 273.16D0 ) THEN
+
+          !liquid_water_mass_fraction = 0.D0
+
+          !es = 1.D0
+
+          !f0 = 0.D0
           
-          el = 1.D0
+          es_0 = -9.097D0 * ( (273.16D0 / temp0) -1 ) - 3.566D0 * log(273.16D0 / temp0) &
+               + 0.876D0 * (1 - (temp0 / 273.16D0)) + log(6.1071D0)
+
+          es = 10D0 ** es_0
+
+          f0 = ( hPres - es ) * wv_mol_fract - es * da_mol_fract - es * volcgas_mix_mol_fract
+
+
 
        END IF
                     
     ELSE
 
        el = 0.D0
+
+       es = 0.D0
        
     END IF
 
-    el = 6.112D0 * DEXP( 17.67D0 * ( temp0 - 273.16D0 ) / ( temp0 - 29.65D0 ) )
+    !el = 6.112D0 * DEXP( 17.67D0 * ( temp0 - 273.16D0 ) / ( temp0 - 29.65D0 ) )
 
     !WRITE(*,*) 'el',el
 
-    f0 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el * volcgas_mix_mol_fract
+    !f0 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el * volcgas_mix_mol_fract
 
     ! ---- All water is vapor
 
@@ -687,8 +732,17 @@ CONTAINS
 
     lw_mf2 = 0.D0
 
+    ice_mf2 = 0.D0
+
     liquid_water_mass_fraction = lw_mf2
-    water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction 
+
+    ice_mass_fraction = ice_mf2
+
+    water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction - ice_mass_fraction
+
+   !WRITE(*,*) '--->water_vapor_mass_fraction',water_vapor_mass_fraction
+   ! WRITE(*,*) '--->liquid_water_mass_fraction',liquid_water_mass_fraction
+    !WRITE(*,*) '--->ice_mass_fraction',ice_mass_fraction
 
      !WRITE(*,*) '--->volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
      !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt
@@ -732,7 +786,7 @@ CONTAINS
          - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /             &
          ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction * cpsolid    &
          + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv &
-         +  volcgas_mix_mass_fraction * cpvolcgas_mix)
+         +  volcgas_mix_mass_fraction * cpvolcgas_mix  + c_ice * ice_mass_fraction )
     
     !WRITE(*,*) 'water_vapor_mass_fraction',water_vapor_mass_fraction
     !WRITE(*,*) 'wv_mol_fract',wv_mol_fract
@@ -742,182 +796,602 @@ CONTAINS
 
     IF ( temp2 .GT. 29.65D0 ) THEN
 
-       IF ( temp2 .LT. 273.16D0 ) THEN
+       IF ( temp2 .GT. 273.16D0 ) THEN
           
           el = 6.112D0 * DEXP( 17.67D0 * ( temp2 - 273.16D0 ) / ( temp2 - 29.65D0 ) )
 
-       ELSE
+          f2 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el * volcgas_mix_mol_fract
+
+       ELSEIF ( temp2 .LT. 273.16D0 ) THEN
           
-          el = 1.D0
+          es_0 = -9.097D0 * ( (273.16D0 / temp2) -1 ) - 3.566D0 * log(273.16D0 / temp2) &
+              + 0.876D0 * (1 - (temp2 / 273.16D0)) + log(6.1071D0)
+
+          es = 10D0 ** es_0
+
+          f2 = ( hPres - es ) * wv_mol_fract - es * da_mol_fract - es * volcgas_mix_mol_fract
 
        END IF
                     
     ELSE
 
        el = 0.D0
+
+       es = 0.D0
        
     END IF
 
-    el = 6.112D0 * DEXP( 17.67D0 * ( temp2 - 273.16D0 ) / ( temp2 - 29.65D0 ) )
-
-       
-    f2 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el * volcgas_mix_mol_fract
-
-       
-    !WRITE(*,*) 'f0,f2,el',f0,f2,el
+    !READ(*,*)
     
-    IF ( ( f0 .LT. 0.D0 ) .AND. ( f2 .LT. 0.D0 ) ) THEN
-        
-       liquid_water_mass_fraction = 0.D0
-       water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction 
 
-       temp = temp2
-       wv_mf = water_vapor_mass_fraction
 
-       RETURN
+    !el = 6.112D0 * DEXP( 17.67D0 * ( temp2 - 273.16D0 ) / ( temp2 - 29.65D0 ) )
+
        
-    ELSEIF ( ( f0 .GT. 0.D0 ) .AND. ( f2 .GT. 0.D0 ) ) THEN
+    !f2 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el * volcgas_mix_mol_fract
 
-       liquid_water_mass_fraction = water_mass_fraction
-       water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction 
 
-       temp = temp0
-       wv_mf = water_vapor_mass_fraction
+    ! ---- All water is ice
 
-       RETURN
+    !WRITE(*,*) '! ---- All water is ice'
+
+    lw_mf3 = 0.D0
+
+    ice_mf3 =  water_mass_fraction 
+
+    ice_mass_fraction = ice_mf3
+
+    liquid_water_mass_fraction = water_mass_fraction  - ice_mf3
+
+    water_vapor_mass_fraction = water_mass_fraction - ice_mf3
+
+    !WRITE(*,*) '--->water_vapor_mass_fraction',water_vapor_mass_fraction
+    !WRITE(*,*) '--->liquid_water_mass_fraction',liquid_water_mass_fraction
+    !WRITE(*,*) '--->ice_mass_fraction',ice_mass_fraction
+
+    
+
+     !WRITE(*,*) '--->volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
+     !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt
+     !WRITE(*,*) '--->water_vapor_mass_fraction',water_vapor_mass_fraction
+     !WRITE(*,*) '--->wv_mol_wt ', wv_mol_wt 
+     !WRITE(*,*) '--->volcgas_mix_mol_wt',volcgas_mix_mol_wt    
+     !WRITE(*,*) '--->dry_air_mass_fraction',dry_air_mass_fraction
+
+    IF ( n_gas .GT. 0) THEN
+
+       wv_mol_fract = ( water_vapor_mass_fraction / wv_mol_wt ) /               &
+            ( water_vapor_mass_fraction / wv_mol_wt                             &
+            + volcgas_mix_mass_fraction / volcgas_mix_mol_wt                    &
+            + dry_air_mass_fraction / da_mol_wt )
+
+       volcgas_mix_mol_fract = ( volcgas_mix_mass_fraction /                    &
+            volcgas_mix_mol_wt ) / ( water_vapor_mass_fraction / wv_mol_wt      &
+            + volcgas_mix_mass_fraction / volcgas_mix_mol_wt                    &
+            + dry_air_mass_fraction / da_mol_wt )
+    
+       da_mol_fract = ( dry_air_mass_fraction / da_mol_wt ) /                   &
+            ( water_vapor_mass_fraction / wv_mol_wt                             &
+            + volcgas_mix_mass_fraction / volcgas_mix_mol_wt                    &
+            + dry_air_mass_fraction / da_mol_wt )
 
     ELSE
 
-       
-       find_temp:DO  
+       wv_mol_fract = ( water_vapor_mass_fraction / wv_mol_wt ) /               &
+            ( water_vapor_mass_fraction / wv_mol_wt                             &
+            + dry_air_mass_fraction / da_mol_wt )
 
-          lw_mf1 = 0.5D0 * ( lw_mf0 + lw_mf2 )
-          
-          liquid_water_mass_fraction = lw_mf1
-          water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction 
-
-         IF ( n_gas .GT. 0) THEN
-          
-              wv_mol_fract = ( water_vapor_mass_fraction / wv_mol_wt ) /        &
-                   ( water_vapor_mass_fraction / wv_mol_wt                      &
-                   + volcgas_mix_mass_fraction / volcgas_mix_mol_wt             &
-                   + dry_air_mass_fraction / da_mol_wt )
-              
-              volcgas_mix_mol_fract = ( volcgas_mix_mass_fraction /             &
-                   volcgas_mix_mol_wt ) / ( water_vapor_mass_fraction /         &
-                   wv_mol_wt + volcgas_mix_mass_fraction / volcgas_mix_mol_wt   &
-                   + dry_air_mass_fraction / da_mol_wt )
-              
-              da_mol_fract = ( dry_air_mass_fraction / da_mol_wt ) /            &
-                   ( water_vapor_mass_fraction / wv_mol_wt                      &
-                   + volcgas_mix_mass_fraction / volcgas_mix_mol_wt             &
-                   + dry_air_mass_fraction / da_mol_wt )
-
-   
-          ELSE
-
-              wv_mol_fract = ( water_vapor_mass_fraction / wv_mol_wt ) /        &
-                   ( water_vapor_mass_fraction / wv_mol_wt                      &
-                   + dry_air_mass_fraction / da_mol_wt )
-              
-              volcgas_mix_mol_fract = 0
-              
-              da_mol_fract = ( dry_air_mass_fraction / da_mol_wt ) /            &
-                   ( water_vapor_mass_fraction / wv_mol_wt                      &
-                   + dry_air_mass_fraction / da_mol_wt )            
-                  
-          END IF
-
-          !WRITE(*,*) 'water_vapor_mass_fraction',water_vapor_mass_fraction
-          !WRITE(*,*) 'wv_mol_fract',wv_mol_fract
-          !WRITE(*,*) 'da_mol_fract',da_mol_fract
-          !WRITE(*,*) 'volcgas_mix_mol_fract',volcgas_mix_mol_fract
-
-
-          temp1 = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw*T_ref )  &
-               - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /       &
-               ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction *      &
-               cpsolid + liquid_water_mass_fraction * c_lw +                    &
-               water_vapor_mass_fraction * c_wv +  volcgas_mix_mass_fraction *  &
-               cpvolcgas_mix)
-
-          IF ( temp1 .GT. 29.65D0 ) THEN
-             
-             IF ( temp1 .LT. 273.16D0 ) THEN
-                
-                el = 6.112D0 * DEXP( 17.67D0 * ( temp1 - 273.16D0 ) / ( temp1 - 29.65D0 ) )
-                
-             ELSE
-                
-                el = 1.D0
-                
-             END IF
-             
-          ELSE
-             
-             el = 0.D0
-             
-          END IF
-
-          el = 6.112D0 * DEXP( 17.67D0 * ( temp1 - 273.16D0 ) / ( temp1 - 29.65D0 ) )
-
-          
-          f1 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el *         &
-               volcgas_mix_mol_fract
-
-
-          !WRITE(*,*) 'volcgas_mix_mol_fract ',volcgas_mix_mol_fract
-          !WRITE(*,*) wv_mol_fract+volcgas_mix_mol_fract+da_mol_fract
-
-          !WRITE(*,*) 't0,t1,t2',temp0,temp1,temp2
-          !WRITE(*,*) 'lw_mf0,lw_mf1,lw_mf2',lw_mf0,lw_mf1,lw_mf2
-          !WRITE(*,*) 'f0,f1,f2',f0,f1,f2
-          !READ(*,*)
-
-          IF (  f1 * f0 .LT. 0.D0 ) THEN
-
-             lw_mf2 = lw_mf1
-             f2 = f1
-             temp2 = temp1
-
-          ELSE
-
-             lw_mf0 = lw_mf1
-             f0 = f1
-             temp0 = temp1
-
-
-          END IF
-
-
-
-          IF ( DABS(temp2-temp0) .LT. 1.D-3 ) THEN
-
-             temp = temp1
-             
-             wv_mf = water_mass_fraction - lw_mf1
-
-
-             RETURN
-
-          ELSEIF ( DABS(lw_mf2 - lw_mf0) .LT. 1.D-5 ) THEN
-
-             temp = temp1
-             
-             wv_mf = water_mass_fraction - lw_mf1
-
-             RETURN
-
-          END IF
-                                 
-       END DO find_temp
+       volcgas_mix_mol_fract = 0.d0
+    
+       da_mol_fract = ( dry_air_mass_fraction / da_mol_wt ) /                   &
+            ( water_vapor_mass_fraction / wv_mol_wt                             &
+            + dry_air_mass_fraction / da_mol_wt )
 
     END IF
 
+    temp3 = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw * T_ref )      &
+         - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /             &
+         ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction * cpsolid    &
+         + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv &
+         +  volcgas_mix_mass_fraction * cpvolcgas_mix  + c_ice * ice_mass_fraction )
+    
+    !WRITE(*,*) 'water_vapor_mass_fraction',water_vapor_mass_fraction
+    !WRITE(*,*) 'wv_mol_fract',wv_mol_fract
+    !WRITE(*,*) 'da_mol_fract',da_mol_fract
+    !WRITE(*,*) 'volcgas_mix_mol_fract',volcgas_mix_mol_fract
+
+
+    IF ( temp3 .GT. 29.65D0 ) THEN
+
+       IF ( temp3 .GT. 273.16D0 ) THEN
+
+          !ice_mass_fraction = 0.D0
+
+          !el = 1.D0
+          
+          el = 6.112D0 * DEXP( 17.67D0 * ( temp3 - 273.16D0 ) / ( temp3 - 29.65D0 ) )
+
+          f3 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el * volcgas_mix_mol_fract
+
+       ELSEIF  ( temp3 .LT. 273.16D0 ) THEN
+          
+          es_0 = -9.097D0 * ( (273.16D0 / temp3) -1 ) - 3.566D0 * log(273.16D0 / temp3) &
+               + 0.876D0 * (1 - (temp3 / 273.16D0)) + log(6.1071D0)
+
+          es = 10D0 ** es_0
+
+          f3 = ( hPres - es ) * wv_mol_fract - es * da_mol_fract - es * volcgas_mix_mol_fract
+
+       END IF
+                    
+    ELSE
+
+       el = 0.D0
+
+       es = 0.D0
+       
+    END IF
+
+    !WRITE(*,*) ' !!!! TEMP2 !!!! ', temp2
+    !WRITE(*,*) ' !!!!f0 f2 f3 !!!! ', f0,f2,f3
+    !READ(*,*)
+ 
+
+
+    IF ( temp2 .GT. 273.16D0 )  THEN !Options: all vapour, all liquid, vapour+liquid
+    !WRITE(*,*) ' TEMP2 gretar than zero '
+    !WRITE(*,*) ' !!!!f0 f2  !!!! ', f0,f2
+    !READ(*,*)
+
+        ice_mass_fraction = 0.D0
+
+        ice_mf = ice_mass_fraction
+
+        IF ( ( f0 .LT. 0.D0 ) .AND. ( f2 .LT. 0.D0 ) ) THEN !All water is vapour
+
+
+
+           liquid_water_mass_fraction = 0.D0
+
+           water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction - ice_mass_fraction
+
+           temp = temp2
+
+           wv_mf = water_vapor_mass_fraction
+
+
+
+
+           RETURN
+
+
+
+       
+        ELSEIF ( ( f0 .GT. 0.D0 ) .AND. ( f2 .GT. 0.D0 ) ) THEN !All water is liquid
+
+
+
+           liquid_water_mass_fraction = water_mass_fraction
+
+           water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction 
+
+           temp = temp0
+
+           wv_mf = water_vapor_mass_fraction
+
+
+
+           RETURN
+
+
+
+        ELSE
+
+
+
+       
+           find_temp1:DO !Water is vapour+liquid
+
+              lw_mf1 = 0.5D0 * ( lw_mf0 + lw_mf2 )
+          
+              liquid_water_mass_fraction = lw_mf1
+              water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction 
+
+              IF ( n_gas .GT. 0) THEN
+          
+                  wv_mol_fract = ( water_vapor_mass_fraction / wv_mol_wt ) /        &
+                       ( water_vapor_mass_fraction / wv_mol_wt                      &
+                       + volcgas_mix_mass_fraction / volcgas_mix_mol_wt             &
+                       + dry_air_mass_fraction / da_mol_wt )
+              
+                  volcgas_mix_mol_fract = ( volcgas_mix_mass_fraction /             &
+                       volcgas_mix_mol_wt ) / ( water_vapor_mass_fraction /         &
+                       wv_mol_wt + volcgas_mix_mass_fraction / volcgas_mix_mol_wt   &
+                       + dry_air_mass_fraction / da_mol_wt )
+              
+                  da_mol_fract = ( dry_air_mass_fraction / da_mol_wt ) /            &
+                       ( water_vapor_mass_fraction / wv_mol_wt                      &
+                       + volcgas_mix_mass_fraction / volcgas_mix_mol_wt             &
+                       + dry_air_mass_fraction / da_mol_wt )
+
+   
+              ELSE
+
+                  wv_mol_fract = ( water_vapor_mass_fraction / wv_mol_wt ) /        &
+                       ( water_vapor_mass_fraction / wv_mol_wt                      &
+                       + dry_air_mass_fraction / da_mol_wt )
+              
+                  volcgas_mix_mol_fract = 0
+              
+                  da_mol_fract = ( dry_air_mass_fraction / da_mol_wt ) /            &
+                       ( water_vapor_mass_fraction / wv_mol_wt                      &
+                       + dry_air_mass_fraction / da_mol_wt )            
+                  
+              END IF
+
+              !WRITE(*,*) 'water_vapor_mass_fraction',water_vapor_mass_fraction
+              !WRITE(*,*) 'wv_mol_fract',wv_mol_fract
+              !WRITE(*,*) 'da_mol_fract',da_mol_fract
+              !WRITE(*,*) 'volcgas_mix_mol_fract',volcgas_mix_mol_fract
+
+
+              temp1 = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw*T_ref )  &
+                   - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /       &
+                   ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction *      &
+                   cpsolid + liquid_water_mass_fraction * c_lw +                    &
+                   water_vapor_mass_fraction * c_wv +  volcgas_mix_mass_fraction *  &
+                   cpvolcgas_mix + c_ice * ice_mass_fraction )
+
+              IF ( temp1 .GT. 29.65D0 ) THEN
+             
+                  IF ( temp1 .GT. 273.16D0 ) THEN
+                
+                      el = 6.112D0 * DEXP( 17.67D0 * ( temp1 - 273.16D0 ) / ( temp1 - 29.65D0 ) )
+                
+                  ELSE
+                
+                      el = 1.D0
+                
+                  END IF
+
+              ELSE
+             
+                  el = 0.D0
+             
+              END IF
+
+              el = 6.112D0 * DEXP( 17.67D0 * ( temp1 - 273.16D0 ) / ( temp1 - 29.65D0 ) )
+
+          
+              f1 = ( hPres - el ) * wv_mol_fract - el * da_mol_fract - el *         &
+                   volcgas_mix_mol_fract
+  
+
+              !WRITE(*,*) 'volcgas_mix_mol_fract ',volcgas_mix_mol_fract
+              !WRITE(*,*) wv_mol_fract+volcgas_mix_mol_fract+da_mol_fract
+
+              !WRITE(*,*) 't0,t1,t2',temp0,temp1,temp2
+              !WRITE(*,*) 'lw_mf0,lw_mf1,lw_mf2',lw_mf0,lw_mf1,lw_mf2
+              !WRITE(*,*) 'f0,f1,f2',f0,f1,f2
+              !READ(*,*)
+
+              IF (  f1 * f0 .LT. 0.D0 ) THEN
+
+                 lw_mf2 = lw_mf1
+                 f2 = f1
+                 temp2 = temp1
+
+              ELSE
+
+                 lw_mf0 = lw_mf1
+                 f0 = f1
+                 temp0 = temp1
+
+
+              END IF
+
+
+
+              IF ( DABS(temp2-temp0) .LT. 1.D-3 ) THEN
+
+                 temp = temp1
+             
+                 wv_mf = water_mass_fraction - lw_mf1
+
+
+                 RETURN
+
+              ELSEIF ( DABS(lw_mf2 - lw_mf0) .LT. 1.D-5 ) THEN
+
+                 temp = temp1
+             
+                 wv_mf = water_mass_fraction - lw_mf1
+
+                 RETURN
+
+
+
+              END IF
+
+
+           END DO find_temp1
+
+
+
+    END IF
+
+
+    ELSEIF ( temp2 .LT. 273.16D0 )  THEN !Options: all vapour, all ice, vapour+ice
+    !WRITE(*,*) ' TEMP2 less than zero '
+    !WRITE(*,*) ' f2 f3 ',f2,f3
+
+
+
+        liquid_water_mass_fraction = 0.D0
+
+        IF ( ( f2 .LT. 0.D0 ) .AND. ( f3 .LT. 0.D0 ) ) THEN !All water is vapour
+
+
+
+           ice_mass_fraction = 0.D0
+
+           water_vapor_mass_fraction = water_mass_fraction - liquid_water_mass_fraction - ice_mass_fraction
+
+           temp = temp2
+           wv_mf = water_vapor_mass_fraction
+           ice_mf = ice_mass_fraction
+
+
+
+           RETURN
+
+
+
+       
+        ELSEIF ( ( f2 .GT. 0.D0 ) .AND. ( f3 .GT. 0.D0 ) ) THEN !All water is ice
+
+
+
+           ice_mass_fraction = water_mass_fraction
+
+           water_vapor_mass_fraction = 0.D0
+
+           temp = temp3
+
+           wv_mf = water_vapor_mass_fraction
+           ice_mf = ice_mass_fraction
+
+
+           RETURN
+
+
+
+        ELSE !All water is vapour and ice
+
+       
+           find_temp2:DO  
+
+              
+
+              ice_mf1 = 0.5D0 * ( ice_mf2 + ice_mf3 )
+          
+              ice_mass_fraction = ice_mf1
+
+              !WRITE(*,*) ' ice_mass_fraction ', ice_mass_fraction
+
+              water_vapor_mass_fraction = water_mass_fraction - ice_mass_fraction 
+
+              !WRITE(*,*) ' water_vapor_mass_fraction ', water_vapor_mass_fraction
+
+              IF ( n_gas .GT. 0) THEN
+          
+                  wv_mol_fract = ( water_vapor_mass_fraction / wv_mol_wt ) /        &
+                       ( water_vapor_mass_fraction / wv_mol_wt                      &
+                       + volcgas_mix_mass_fraction / volcgas_mix_mol_wt             &
+                       + dry_air_mass_fraction / da_mol_wt )
+              
+                  volcgas_mix_mol_fract = ( volcgas_mix_mass_fraction /             &
+                       volcgas_mix_mol_wt ) / ( water_vapor_mass_fraction /         &
+                       wv_mol_wt + volcgas_mix_mass_fraction / volcgas_mix_mol_wt   &
+                       + dry_air_mass_fraction / da_mol_wt )
+              
+                  da_mol_fract = ( dry_air_mass_fraction / da_mol_wt ) /            &
+                       ( water_vapor_mass_fraction / wv_mol_wt                      &
+                       + volcgas_mix_mass_fraction / volcgas_mix_mol_wt             &
+                       + dry_air_mass_fraction / da_mol_wt )
+
+   
+              ELSE
+
+                  wv_mol_fract = ( water_vapor_mass_fraction / wv_mol_wt ) /        &
+                       ( water_vapor_mass_fraction / wv_mol_wt                      &
+                       + dry_air_mass_fraction / da_mol_wt )
+              
+                  volcgas_mix_mol_fract = 0
+              
+                  da_mol_fract = ( dry_air_mass_fraction / da_mol_wt ) /            &
+                       ( water_vapor_mass_fraction / wv_mol_wt                      &
+                       + dry_air_mass_fraction / da_mol_wt )            
+                  
+              END IF
+
+              !WRITE(*,*) 'water_vapor_mass_fraction',water_vapor_mass_fraction
+              !WRITE(*,*) 'wv_mol_fract',wv_mol_fract
+              !WRITE(*,*) 'da_mol_fract',da_mol_fract
+              !WRITE(*,*) 'volcgas_mix_mol_fract',volcgas_mix_mol_fract
+
+
+              temp1 = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw*T_ref )  &
+                   - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /       &
+                   ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction *      &
+                   cpsolid + liquid_water_mass_fraction * c_lw +                    &
+                   water_vapor_mass_fraction * c_wv +  volcgas_mix_mass_fraction *  &
+                   cpvolcgas_mix + c_ice * ice_mass_fraction )
+
+
+
+              IF ( temp1 .GT. 29.65D0 ) THEN
+             
+                 IF ( temp1 .LT. 273.16D0 ) THEN
+                
+                    el = 6.112D0 * DEXP( 17.67D0 * ( temp1 - 273.16D0 ) / ( temp1 - 29.65D0 ) )
+                
+                 ELSE
+                
+                    el = 1.D0
+                
+                 END IF
+
+              ELSE
+             
+                 el = 0.D0
+             
+              END IF
+
+              es_0 = -9.097D0 * ( (273.16D0 / temp1) -1 ) - 3.566D0 * log(273.16D0 / temp1) &
+               + 0.876D0 * (1 - (temp1 / 273.16D0)) + log(6.1071D0)
+
+              es = 10D0 ** es_0
+
+              f1 = ( hPres - es ) * wv_mol_fract - es * da_mol_fract - es * volcgas_mix_mol_fract
+
+            
+
+              !WRITE(*,*) 'volcgas_mix_mol_fract ',volcgas_mix_mol_fract
+              !WRITE(*,*) wv_mol_fract+volcgas_mix_mol_fract+da_mol_fract
+
+              !WRITE(*,*) 't0,t1,t2',temp0,temp1,temp2
+              !WRITE(*,*) 'lw_mf0,lw_mf1,lw_mf2',lw_mf0,lw_mf1,lw_mf2
+              !WRITE(*,*) 'f0,f1,f2',f0,f1,f2
+              !READ(*,*)
+
+              IF (  f1 * f2 .LT. 0.D0 ) THEN
+
+                 ice_mf3 = ice_mf1
+                 f3 = f1
+                 temp3 = temp1
+
+              ELSE
+
+                 ice_mf2 = ice_mf1
+                 f2 = f1
+                 temp2 = temp1
+
+
+          END IF
+
+
+
+              IF ( DABS(temp2-temp3) .LT. 1.D-3 ) THEN
+
+                 temp = temp1
+             
+             
+                 ice_mf = ice_mf1
+                 wv_mf = water_mass_fraction - ice_mf
+
+                   
+
+                 RETURN
+
+              ELSEIF ( DABS(ice_mf2 - ice_mf3) .LT. 1.D-5 ) THEN
+
+                 temp = temp1
+             
+                 ice_mf = ice_mf1
+                 wv_mf = water_mass_fraction - ice_mf
+  
+
+
+                 RETURN
+
+              END IF
+                                 
+           END DO find_temp2
+
+
+
+    END IF
+
+   END IF
+
+
+   ELSE
+
+       IF ( dry_air_mass_fraction .EQ. 0.D0 ) THEN
+
+
+       liquid_water_mass_fraction = 0.D0
+
+       ice_mass_fraction = 0.D0
+
+       water_vapor_mass_fraction = water_mass_fraction 
+
+       temp = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw * T_ref )       &
+            - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /             &
+            ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction * cpsolid    &
+            + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv   &
+            + ice_mass_fraction * c_ice +  volcgas_mix_mass_fraction * cpvolcgas_mix)
+       
+       wv_mf = 0.D0
+       ice_mf = 0.D0
+
+        !WRITE(*,*)  dry_air_mass_fraction , cpair , solid_tot_mass_fraction ,       &
+        !    cpsolid , water_vapor_mass_fraction , liquid_water_mass_fraction ,     &
+        !     volcgas_mix_mass_fraction , cpvolcgas_mix
+        !WRITE(*,*) 
+
+       
+        !WRITE(*,*) 'cpvolcgas_mix',cpvolcgas_mix      
+        !WRITE(*,*) 'temp',temp
+        !WRITE(*,*) 'wv_mf',wv_mf
+        !WRITE(*,*) 'ice_mf',ice_mf
+        !READ(*,*)
+
+       RETURN
+
+    END IF
+
+
+    liquid_water_mass_fraction = 0.D0
+
+    ice_mass_fraction = 0.D0
+
+    water_vapor_mass_fraction = water_mass_fraction 
+
+
+
+    
+  
+     !WRITE(*,*)  dry_air_mass_fraction , water_vapor_mass_fraction
+     !WRITE(*,*) 'wv_mol_fract',wv_mol_fract
+     !WRITE(*,*) 'da_mol_fract',da_mol_fract
+     !WRITE(*,*) 'volcgas_mix_mol_fract',volcgas_mix_mol_fract
+
+  
+    temp = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw * T_ref )       &
+         - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /             &
+         ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction * cpsolid    &
+         + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv   &
+         +  volcgas_mix_mass_fraction * cpvolcgas_mix + c_ice * ice_mass_fraction )
+
+    !WRITE(*,*)  'enth',enth 
+    !WRITE(*,*) 'temp0',temp0
+    !READ(*,*)
+
+    wv_mf = water_mass_fraction 
+    ice_mf = 0.D0
+       
+    END IF
 
 
   END SUBROUTINE eval_temp
 
 
+
+
+
 END MODULE mixture_module
+
+
 

@@ -126,7 +126,7 @@ MODULE inpout
         solid_mfr_oldold(:)
 
   NAMELIST / control_parameters / run_name , verbose_level , dakota_flag ,      &
-        inversion_flag , hysplit_flag , aggregation_flag
+        inversion_flag , hysplit_flag , aggregation_flag, water_flag
 
   NAMELIST / inversion_parameters / height_obj , r_min , r_max , n_values ,     &
        w_min , w_max
@@ -210,6 +210,7 @@ CONTAINS
        hysplit_flag = .FALSE.
        inversion_flag = .FALSE.
        aggregation_flag = .FALSE.
+       water_flag = .FALSE.
 
        !---------- parameters of the INERSION_PARAMETERS namelist ------------------
        height_obj = 0.D0
@@ -331,7 +332,8 @@ CONTAINS
     USE moments_module, ONLY : n_nodes
 
     USE mixture_module, ONLY: water_volume_fraction0 , rgasmix , gas_mass_fraction, &
-         water_vapor_mass_fraction , liquid_water_mass_fraction , gas_volume_fraction
+         water_vapor_mass_fraction , liquid_water_mass_fraction , gas_volume_fraction, &
+         ice_mass_fraction
 
     ! External procedures
 
@@ -1751,7 +1753,7 @@ CONTAINS
     USE mixture_module, ONLY: rho_mix , tp , atm_mass_fraction ,               &
          volcgas_mix_mass_fraction , volcgas_mass_fraction,                    &
          dry_air_mass_fraction , water_vapor_mass_fraction ,                   & 
-         liquid_water_mass_fraction
+         liquid_water_mass_fraction, ice_mass_fraction
 
     ! USE plume_model, ONLY : gas_mass_fraction
 
@@ -1794,7 +1796,7 @@ CONTAINS
 97     FORMAT(1x,'     z (m)     ',1x,'       r (m)    ',1x,'      x (m)    ',  &
             1x,'     y (m)     ',1x,'mix.dens(kg/m3)',1x,'temperature(C)',      &
             1x,' vert vel (m/s)',1x,' mag vel (m/s) ',1x,' d.a. massfract',     &
-            1x,' w.v. massfract',1x,' l.w. massfract',1x)
+            1x,' w.v. massfract',1x,' l.w. massfract',1x' i. massfract',1x)
 
 
 98     FORMAT(1x,'sol massfract ')
@@ -1811,9 +1813,9 @@ CONTAINS
 
     WRITE(col_unit,101) z , r , x , y , rho_mix , tp - 273.15D0 , w , mag_u,    &
          dry_air_mass_fraction , water_vapor_mass_fraction ,                    & 
-         liquid_water_mass_fraction , solid_partial_mass_fraction(1:n_part) ,   &
-         volcgas_mass_fraction(1:n_gas) , volcgas_mix_mass_fraction , rho_atm , &
-         mfr , ta, pa
+         liquid_water_mass_fraction , ice_mass_fraction ,                       &
+         solid_partial_mass_fraction(1:n_part) , volcgas_mass_fraction(1:n_gas),& 
+         volcgas_mix_mass_fraction , rho_atm , mfr , ta, pa
 
 
     WRITE(mom_unit,*) z , mom(1:n_part,0:n_mom-1),set_mom(1:n_part,0)
@@ -1899,7 +1901,7 @@ CONTAINS
     USE mixture_module, ONLY: rho_mix , tp , atm_mass_fraction ,               &
          volcgas_mix_mass_fraction , volcgas_mass_fraction,                    &
          dry_air_mass_fraction , water_vapor_mass_fraction ,                   & 
-         liquid_water_mass_fraction
+         liquid_water_mass_fraction, ice_mass_fraction
 
     USE variables, ONLY : height_nbl
 
@@ -1910,7 +1912,7 @@ CONTAINS
     INTEGER :: i , j , n_hy
 
     REAL*8 :: temp_k,mfr
-    REAL*8 :: da_mf,wv_mf,lw_mf,volcgas_tot_mf
+    REAL*8 :: da_mf,wv_mf,lw_mf, ice_mf, volcgas_tot_mf
     REAL*8, ALLOCATABLE :: x_col(:) , y_col(:) , z_col(:) , r_col(:) 
     REAL*8, ALLOCATABLE :: solid_pmf(:,:) , gas_mf(:) , mfr_col(:)
     REAL*8, ALLOCATABLE :: volcgas_mf(:,:)
@@ -1962,7 +1964,7 @@ CONTAINS
        !     mfr_col(i) , ta , pa
 
        READ(read_col_unit,111) z_col(i) , r_col(i) , x_col(i) , y_col(i) ,     &
-	    rho_mix , temp_k , w , mag_u, da_mf , wv_mf , lw_mf ,              &
+	    rho_mix , temp_k , w , mag_u, da_mf , wv_mf , lw_mf , ice_mf,      &
             solid_pmf(1:n_part,i) , volcgas_mf(1:n_gas,i), volcgas_tot_mf,     &
             rho_atm , mfr_col(i) , ta, pa
 

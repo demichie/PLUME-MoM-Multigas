@@ -88,6 +88,9 @@ MODULE meteo_module
   
   !> specific heat of liquid water (J K-1 kg-1)
   REAL*8, PARAMETER :: c_lw = 4187.0D0
+
+  !> specific heat of ice (J K-1 kg-1)
+  REAL*8, PARAMETER :: c_ice = 2108.0D0
   
   !> molecular weight of dry air
   REAL*8, PARAMETER :: da_mol_wt = 0.029D0
