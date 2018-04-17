@@ -751,7 +751,6 @@ CONTAINS
     !WRITE(*,*) liquid_water_mass_fraction/water_mass_fraction + water_vapor_mass_fraction/water_mass_fraction &
     !           + ice_mass_fraction/water_mass_fraction
 
-
     ! constant for mixture of dry air + water vapor + other volcanic gases 
     rgasmix = ( f_(8+n_part*n_mom) * rair + wv_mf * f_(1) * rwv                 &
          + volcgas_mix_mass_fraction * f_(1) * rvolcgas_mix )                   &

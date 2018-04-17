@@ -1,5 +1,5 @@
 !********************************************************************************
-!> \brief Gas/particles mixture module
+!> \brief Gas/particles mixture module 
 !
 !> This module contains all the variables and the procedures related to the 
 !> gas-particles mixture.
@@ -228,10 +228,10 @@ CONTAINS
     
     END IF
 
-    ! WRITE(*,*) 'rvolcgas_mix',rvolcgas_mix
-    ! WRITE(*,*) 'cpvolcgas_mix',cpvolcgas_mix
-    ! WRITE(*,*) 'rhovolcgas_mix',rhovolcgas_mix
-    ! WRITE(*,*) 'volcgas_mix_mass_fraction',volcgas_mix_mass_fraction
+     !WRITE(*,*) 'rvolcgas_mix',rvolcgas_mix
+     !WRITE(*,*) 'cpvolcgas_mix',cpvolcgas_mix
+     !WRITE(*,*) 'rhovolcgas_mix',rhovolcgas_mix
+     !WRITE(*,*) 'volcgas_mix_mass_fraction',volcgas_mix_mass_fraction
 
     
     rhowv = pa / ( rwv * tp0 )
@@ -578,7 +578,7 @@ CONTAINS
             + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv   &
             + ice_mass_fraction * c_ice +  volcgas_mix_mass_fraction * cpvolcgas_mix)
        
-       wv_mf = 0.D0
+       wv_mf = water_mass_fraction 
        ice_mf = 0.D0
 
         !WRITE(*,*)  dry_air_mass_fraction , cpair , solid_tot_mass_fraction ,       &
@@ -1333,7 +1333,7 @@ CONTAINS
             + liquid_water_mass_fraction * c_lw + water_vapor_mass_fraction * c_wv   &
             + ice_mass_fraction * c_ice +  volcgas_mix_mass_fraction * cpvolcgas_mix)
        
-       wv_mf = 0.D0
+       wv_mf = water_mass_fraction 
        ice_mf = 0.D0
 
         !WRITE(*,*)  dry_air_mass_fraction , cpair , solid_tot_mass_fraction ,       &
