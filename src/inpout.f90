@@ -1297,6 +1297,7 @@ CONTAINS
 
                 END DO
 
+
              ELSEIF ( distribution .EQ. 'constant' ) THEN
 
                 mom0(i_part,i) = diam_constant_phi(i_part)**i
