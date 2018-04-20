@@ -70,6 +70,9 @@ MODULE inpout
   !> Name of output file for the parameters of the beta distribution
   CHARACTER(LEN=30) :: mat_file
 
+  !> Name of output file for the parameters of the beta distribution
+  CHARACTER(LEN=30) :: py_file
+
   !> Name of file for the parameters of the atmosphere
   CHARACTER(LEN=50) :: atm_file
 
@@ -82,6 +85,9 @@ MODULE inpout
 
   !> Beta distribution parameters file unit
   INTEGER :: mat_unit
+
+  !> Beta distribution parameters file unit
+  INTEGER :: py_unit
 
   !> Input data unit
   INTEGER :: inp_unit
@@ -1536,6 +1542,204 @@ CONTAINS
        CLOSE(mat_unit)
        
     END IF
+
+
+
+    ! the parameters of the particles phases distributions are saved in a file 
+    ! readable by Python
+
+    IF ( .NOT. dakota_flag ) THEN
+
+       n_unit = n_unit + 1
+       
+       py_unit = n_unit
+       
+       py_file = TRIM(run_name)//'.py'
+       
+       OPEN(py_unit,file=py_file,status='unknown')
+       
+       WRITE(py_unit,111) 'n_part = ',n_part
+       WRITE(py_unit,111) 'n_gas  = ',n_gas
+       WRITE(py_unit,112) 'gas_volume_fraction = ',gas_volume_fraction
+       
+       IF ( distribution .EQ. 'beta' ) THEN
+
+          WRITE(py_unit,113,advance="no") 'p                    = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") p_beta(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") p_beta(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+          WRITE(py_unit,113,advance="no") 'q                    = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") q_beta(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") q_beta(n_part)
+          WRITE(py_unit,117) ' ] '
+
+          WRITE(py_unit,113,advance="no") 'd_max                = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") d_max(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") d_max(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+
+          !WRITE(py_unit,*) 'q = [',q_beta(1:n_part),'];' 
+          !WRITE(py_unit,*) 'd_max = [',d_max(1:n_part),'];'
+          
+          
+       ELSEIF ( distribution .EQ. 'lognormal' ) THEN
+
+
+          WRITE(py_unit,113,advance="no") 'mu                   = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") mu_lognormal(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") mu_lognormal(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+          WRITE(py_unit,113,advance="no") 'sigma                = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") sigma_lognormal(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") sigma_lognormal(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+          
+          
+         
+          
+       ELSEIF ( distribution .EQ. 'constant' ) THEN
+
+          WRITE(py_unit,113,advance="no") 'diam                 = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") diam_constant(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") diam_constant(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+
+          
+          !WRITE(py_unit,*) 'diam = [',diam_constant(1:n_part),'];'
+          
+       END IF
+
+
+       WRITE(py_unit,113,advance="no") 'solid_mass_fractions = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") solid_partial_mass_fraction(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") solid_partial_mass_fraction(n_part)
+       WRITE(py_unit,117) ' ] '
+
+
+
+       WRITE(py_unit,113,advance="no") 'd1                   = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") diam1(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") diam1(n_part)
+       WRITE(py_unit,117) ' ] '
+
+       WRITE(py_unit,113,advance="no") 'd2                   = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") diam2(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") diam2(n_part)
+       WRITE(py_unit,117) ' ] '
+
+       WRITE(py_unit,113,advance="no") 'rho1                 = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") rho1(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") rho1(n_part)
+       WRITE(py_unit,117) ' ] '
+
+       WRITE(py_unit,113,advance="no") 'rho2                 = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") rho2(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") rho2(n_part)
+       WRITE(py_unit,117) ' ] '
+      
+       IF ( verbose_level .GE. 1 ) WRITE(*,*) 'Write python file: done' 
+
+111    FORMAT(A9,I1)
+112    FORMAT(A22,F20.10)
+
+113    FORMAT(A25)
+114    FORMAT(F20.10)
+115    FORMAT(A3)
+116    FORMAT(F20.10)
+117    FORMAT(A3)
+       
+       CLOSE(py_unit)
+       
+    END IF
+
+
 
     tend1 = .FALSE.
     

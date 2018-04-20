@@ -531,6 +531,7 @@ CONTAINS
     REAL*8 :: alfa_s_u_r2(1:n_part)
     REAL*8 :: alfa_g_u_r2
     REAL*8 :: alfa_lw_u_r2
+    REAL*8 :: alfa_ice_u_r2
 
     REAL*8 :: atm_volume_fraction
     REAL*8 :: volcgas_mix_volume_fraction
@@ -776,12 +777,14 @@ CONTAINS
 
     rhoB_solid_tot_u_r2 = SUM( rhoB_solid_U_r2(1:n_part) )
 
-    alfa_g_u_r2 = ( f_(1) * ( 1.D0 - liquid_water_mass_fraction ) -             &
+    alfa_g_u_r2 = ( f_(1) * ( 1.D0 - liquid_water_mass_fraction - ice_mass_fraction ) -             &
          rhoB_solid_tot_U_r2 ) / rho_gas 
 
     alfa_lw_u_r2 = f_(1) * liquid_water_mass_fraction / rho_lw
 
-    u_r2 = SUM( alfa_s_u_r2(1:n_part) ) + alfa_g_u_r2 + alfa_lw_u_r2 
+    alfa_ice_u_r2 = f_(1) * ice_mass_fraction / rho_ice
+
+    u_r2 = SUM( alfa_s_u_r2(1:n_part) ) + alfa_g_u_r2 + alfa_lw_u_r2 + alfa_ice_u_r2
 
     r = DSQRT( u_r2 / mag_u )
 
@@ -795,7 +798,7 @@ CONTAINS
                SUM(alfa_s_u_r2(1:n_part))/u_r2
           WRITE(*,*) ' alfa_g', alfa_g_u_r2/ u_r2
           WRITE(*,*) ' alfa_lw', alfa_lw_u_r2/ u_r2
-          WRITE(*,*) ( alfa_lw_u_r2 + alfa_g_u_r2 + SUM(alfa_s_u_r2(1:n_part)) )&
+          WRITE(*,*) ( alfa_lw_u_r2 + alfa_ice_u_r2 + alfa_g_u_r2 + SUM(alfa_s_u_r2(1:n_part)) )&
                / u_r2
           
        END IF
