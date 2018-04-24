@@ -9,8 +9,6 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 pathname = os.getcwd()
-#print pathname
-
 root = Tkinter.Tk()
 root.withdraw()
 filename= tkFileDialog.askopenfilename(filetypes=[('Pick a file','*.bak')])
@@ -18,13 +16,23 @@ filename= tkFileDialog.askopenfilename(filetypes=[('Pick a file','*.bak')])
 filename = filename.split('/')[-1]
 filename = re.sub('\.bak$', '', filename)
 
-#print filename
+prova_bak = open("%s.bak" % filename, "r")
+findpart = 'N_PART'
+for num, line in enumerate(prova_bak, 1):
+        if findpart in line:
+            n_part = int(line[8:-2])
+prova_bak.close()
+
+
+prova_bak = open("%s.bak" % filename, "r")
+findgas = 'N_GAS'
+for num, line in enumerate(prova_bak, 1):
+        if findgas in line:
+            n_gas = int(line[7:-2])
+prova_bak.close()
 
 var = "%s" % filename
 module = __import__(var)
-
-n_gas = module.n_gas
-
 
 prova = np.loadtxt("%s.col" % filename, skiprows = 1)
 
@@ -32,11 +40,7 @@ file_moments = open("%s.mom" % filename, "r")
 moments = file_moments.readlines()
 file_moments.close()
 
-n_part = int(moments[0])
-
-
 n_mom = int(moments[1])
-
 
 f = open("%s.mom" % filename, "r")
 moments = f.readlines()[2:]
@@ -50,16 +54,11 @@ for i in range(moments.shape[0]):
     a.append(moments[i].split())
 
 a=np.asarray(a)
-#number_of_lines = int(n_part*(n_mom+1)+1)
 moments=a.reshape((-1,int(n_part*(n_mom+1)+1)))
-
 
 z_levels = moments.shape[0]
 
-
-
 prova=prova.reshape((z_levels,-1))
-
 
 if n_mom > 1:
     moments = moments[:,1:]
@@ -108,14 +107,11 @@ dry_air_mass_fraction = dry_air_mass_fraction.reshape((-1,1))
 wvapour_mass_fraction = wvapour_mass_fraction.reshape((-1,1))
 liquid_water_mass_fraction = liquid_water_mass_fraction.reshape((-1,1))
 ice_mass_fraction = ice_mass_fraction.reshape((-1,1))
-
-
 solid_partial_mass_fraction = np.zeros((prova.shape[0],n_part))
 
 for i in range(n_part):
 
     solid_partial_mass_fraction[:,i] = prova[:,12+i]
-
 
 if n_gas == 0:
 
@@ -154,10 +150,11 @@ rho_rel = rho_mix - rho_atm
 rho_rel = rho_rel.reshape((-1,1))
 
 
-# plot mass fractions
+# PLOT FIGURES
+
+# MASS FRACTION 
 
 fig = plt.figure()
-
 
 plt.subplot(2, 2, 1)
 
@@ -166,10 +163,8 @@ lines = plt.plot(dry_air_mass_fraction,z, volcgas_mix_mass_fraction,z,wvapour_ma
 names = ['dry air','volcgas','wv','totalgas']
 
 plt.legend(lines, [names[j] for j in range(len(names))])
-
 plt.xlabel('Gas mass fraction')
 plt.ylabel('Height (km)')
-
 
 plt.subplot(2, 2, 2)
 
@@ -177,14 +172,11 @@ lines = plt.plot(wvapour_mass_fraction,z,liquid_water_mass_fraction,z, ice_mass_
 
 plt.xlabel('Water mass fraction')
 plt.ylabel('Height (km)')
-
 names = ['wv','lq','ice']
 
 plt.legend(lines, [names[j] for j in range(len(names))])
 
-
 plt.subplot(2, 2, 3)
-
 
 for i in range(n_part):
 
@@ -193,30 +185,22 @@ for i in range(n_part):
 plt.xlabel('Particles mass fraction')
 plt.ylabel('Height (km)')
 
-
-
 plt.subplot(2, 2, 4)
 
-
 lines = plt.plot(solid_tot_mass_fraction,z, gas_mass_fraction,z,liquid_water_mass_fraction,z, ice_mass_fraction, z,'--')
+
+plt.xlabel('Phases mass fraction')
+plt.ylabel('Height (km)')
 names = ['part','gas','lq','ice']
 
-plt.xlabel('Phase mass fraction')
-plt.ylabel('Height (km)')
-
-
-
 plt.legend(lines, [names[j] for j in range(len(names))])
-
-
 fig.tight_layout()
 fig.savefig(str(filename)+'_mass_fraction.pdf')   # save the figure to file
-plt.close(fig)
+plt.close()
 
-
+# PARTICLE LOSS FRACTION
 
 fig = plt.figure()
-
 
 solid_mass_flux = np.zeros((prova.shape[0],n_part))
 solid_mass_loss = np.zeros((prova.shape[0],n_part))
@@ -235,21 +219,17 @@ for i in range(n_part):
 
 plt.xlabel('Particles mass loss fraction')
 plt.ylabel('Height (km)')
-
-
 fig.savefig(str(filename)+'_particles_loss_fraction.pdf')   # save the figure to file
+plt.close()
 
 
 
 fig = plt.figure()
 
-
-
 if n_part == 1:
     
     plt.subplot(1,4,1)
-    plt.plot(moments[:,1]/moments[:,0],z)
-    
+    plt.plot(moments[:,1]/moments[:,0],z)    
     plt.xlabel(r'$\mu$'"("r'$\phi$'")")
 
     
@@ -261,14 +241,10 @@ else:
         plt.subplot(2,n_part,i+1)
         
         M0 = np.asarray(moments[:,i,0], dtype = float).reshape((-1,1))
-        M1 = np.asarray(moments[:,i,1], dtype = float).reshape((-1,1))
-
-       
-        plt.plot(M1[:,0]/M0[:,0],z)
-        
+        M1 = np.asarray(moments[:,i,1], dtype = float).reshape((-1,1))       
+        plt.plot(M1[:,0]/M0[:,0],z)        
         plt.xlabel(r'$\mu$'"("r'$\phi$'")")
-                       
-    
+                           
     
     plt.ylabel('Height (km)')
 
@@ -298,16 +274,12 @@ if n_part == 1 :
 
     skew = np.zeros((prova.shape[0],1)) 
 
-    skew[:,0] = M3[:,0] - 3 * M1[:,0] * M2[:,0] + 2 * M1[:,0]**3 
-    
-     
+    skew[:,0] = M3[:,0] - 3 * M1[:,0] * M2[:,0] + 2 * M1[:,0]**3      
  
     plt.plot(skew,z)
 
     plt.xlabel('Skew (\phi)'"("r'$\phi$'")")
     plt.ylabel('Height (km)')
-
-
 
     plt.subplot(1,4,4)
     plt.plot(100*solid_mass_loss_cum[:,i],z,'-')
@@ -319,35 +291,25 @@ else:
     
     for i in range(n_part):
         
-        plt.subplot(2,n_part,n_part+i+1)
-       
-        
-       
-        sigma = np.zeros((prova.shape[0],1)) 
-
-        
+        plt.subplot(2,n_part,n_part+i+1)                      
+        sigma = np.zeros((prova.shape[0],1))         
 
         M0 = np.asarray(moments[:,i,0], dtype = float).reshape((-1,1))
         M1 = np.asarray(moments[:,i,1], dtype = float).reshape((-1,1))
         M2 = np.asarray(moments[:,i,2], dtype = float).reshape((-1,1))       
-        M3 = np.asarray(moments[:,i,3], dtype = float).reshape((-1,1))
-
-      
+        M3 = np.asarray(moments[:,i,3], dtype = float).reshape((-1,1))      
         sigma[:,0] = np.sqrt(M2[:,0]/M0[:,0]-(M1[:,0]/M0[:,0])**2)
 
         plt.plot(sigma,z)
-        
-        
-        
+                        
         plt.xlabel(r'$\sigma$')
         plt.ylabel('Height (km)')
 
-
 fig.tight_layout()
-fig.savefig(str(filename)+'_test.pdf')   # save the figure to file
+fig.savefig(str(filename)+'_moments.pdf')   # save the figure to file
+plt.close()
 
-
-plt.close(fig)
+# VARIABLES
 
 fig = plt.figure()
 
@@ -358,15 +320,12 @@ plt.plot(r,z)
 plt.xlabel('Radius (km)')
 plt.ylabel('Height (km)')
 
-
 plt.subplot(2, 2, 2)
-
 
 plt.plot(w,z)
 
 plt.xlabel('Velocity (m/s)')
 plt.ylabel('Height (km)')
-
 
 plt.subplot(2, 2, 3)
 
@@ -384,7 +343,7 @@ plt.ylabel('Height (km)')
 
 fig.tight_layout()
 fig.savefig(str(filename)+'_profiles.pdf')   # save the figure to file
-plt.close(fig)
+plt.close()
 
 # plot plume 3d
 
@@ -475,16 +434,9 @@ for i in range(n_sect):
 ax.set_xlabel('x (km)')
 ax.set_ylabel('y (km)')
 ax.set_zlabel('z (km)')
-  
 fig.tight_layout()   
 fig.savefig(str(filename)+'_plume.pdf')   # save the figure to file
 plt.close()
-sys.exit()
-
-
-
-
-
 
 
 
