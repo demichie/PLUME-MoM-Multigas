@@ -370,7 +370,7 @@ CONTAINS
     ! ... locate the grid points near the topographic points
     ! ... and interpolate linearly the profile
     !
-    t = 1
+    t = 0
 
     DO n = 1, n1x
 
@@ -378,12 +378,16 @@ CONTAINS
 
     END DO
     
-    IF (t==1 .OR. t==n1x) THEN
+    IF ( t.EQ.0 ) THEN
 
-       f2 = f1(t)
+       f2 = f1(1)
+
+    ELSEIF ( t.EQ.n1x ) THEN
+
+       f2 = f1(n1x)
 
     ELSE
-
+ 
        grad = (f1(t+1)-f1(t))/(x1(t+1)-x1(t))
        f2 = f1(t) + (x2-x1(t)) * grad
 
