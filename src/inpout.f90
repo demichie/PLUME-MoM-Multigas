@@ -998,10 +998,19 @@ CONTAINS
 
     ELSE
 
-       n_nodes = NINT(0.5D0 * n_mom)
+       IF ( MOD(n_mom,2) == 0 ) THEN
+       
+          n_nodes = NINT(0.5D0 * n_mom)
 
+       ELSE
+
+           WRITE(*,*) 'ERROR: number of moments should be even. n_mom =',n_mom
+           STOP
+
+       END IF
+          
     END IF
-
+ 
     IF ( hysplit_flag ) THEN
 
        IF (  distribution .NE. 'constant' ) THEN
