@@ -88,6 +88,9 @@ MODULE meteo_module
   
   !> specific heat of liquid water (J K-1 kg-1)
   REAL*8, PARAMETER :: c_lw = 4187.0D0
+
+  !> specific heat of ice (J K-1 kg-1)
+  REAL*8, PARAMETER :: c_ice = 2108.0D0
   
   !> molecular weight of dry air
   REAL*8, PARAMETER :: da_mol_wt = 0.029D0
@@ -367,7 +370,7 @@ CONTAINS
     ! ... locate the grid points near the topographic points
     ! ... and interpolate linearly the profile
     !
-    t = 1
+    t = 0
 
     DO n = 1, n1x
 
@@ -375,12 +378,16 @@ CONTAINS
 
     END DO
     
-    IF (t==1 .OR. t==n1x) THEN
+    IF ( t.EQ.0 ) THEN
 
-       f2 = f1(t)
+       f2 = f1(1)
+
+    ELSEIF ( t.EQ.n1x ) THEN
+
+       f2 = f1(n1x)
 
     ELSE
-
+ 
        grad = (f1(t+1)-f1(t))/(x1(t+1)-x1(t))
        f2 = f1(t) + (x2-x1(t)) * grad
 

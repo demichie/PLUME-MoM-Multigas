@@ -261,11 +261,11 @@ CONTAINS
     END IF 
 
     !---- Enthalpy conservation (Eq.7 Bursik 2001)(Eq. 23 PlumeMoM-GMD)
-    rhs_(4) = 2.D0 * r * ueps * rho_atm * ( cpair * ta + gi * z                 &
-         + 0.5D0 * ueps**2 ) - ( r**2 ) * w * rho_atm * gi                      &
-         - tp * prob_factor * 2.D0 * r * cp_solid_term                          &
-         - rp * r * ( tp**4 - ta**4 )                                           &
-         + tp * SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas) )
+    !rhs_(4) = 2.D0 * r * ueps * rho_atm * ( cpair * ta + gi * z                 &
+    !     + 0.5D0 * ueps**2 ) - ( r**2 ) * w * rho_atm * gi                      &
+    !     - tp * prob_factor * 2.D0 * r * cp_solid_term                          &
+    !     - rp * r * ( tp**4 - ta**4 )                                           &
+    !     + tp * SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas) )
 
     !WRITE(*,*) 'SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas) '               &
      !	,SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas))
@@ -347,9 +347,9 @@ CONTAINS
     USE mixture_module, ONLY: atm_mass_fraction , mixture_enthalpy
     USE mixture_module, ONLY: dry_air_mass_fraction , water_mass_fraction
     USE mixture_module, ONLY: cpvolcgas_mix  , solid_tot_mass_fraction
-    USE mixture_module, ONLY: liquid_water_mass_fraction , water_vapor_mass_fraction
+    USE mixture_module, ONLY: liquid_water_mass_fraction , water_vapor_mass_fraction, ice_mass_fraction
 
-    USE meteo_module, ONLY: u_atm , c_lw , c_wv , cpair , h_lw0 , h_wv0 , T_ref
+    USE meteo_module, ONLY: u_atm , c_lw , c_wv , cpair , h_lw0 , h_wv0 , T_ref, c_ice
 
     USE particles_module, ONLY: mom , cpsolid
 
@@ -374,6 +374,7 @@ CONTAINS
          + solid_tot_mass_fraction * cpsolid * tp                               & 
          + water_vapor_mass_fraction * ( h_wv0 + c_wv * ( tp - T_ref ) )        &
          + liquid_water_mass_fraction * ( h_lw0 + c_lw * ( tp - T_ref ) )       &
+         + ice_mass_fraction * ( c_ice * tp )       &
          + volcgas_mix_mass_fraction * cpvolcgas_mix * tp 
 
 
@@ -491,7 +492,7 @@ CONTAINS
          volcgas_mass_fraction , volcgas_mix_mass_fraction , cpvolcgas_mix ,    &
          rvolcgas , cpvolcgas , dry_air_mass_fraction , water_mass_fraction ,   &
          solid_tot_mass_fraction , liquid_water_mass_fraction ,                 &
-         water_vapor_mass_fraction
+         water_vapor_mass_fraction, ice_mass_fraction
 
     USE particles_module, ONLY : mom , solid_partial_mass_fraction ,            &
          solid_partial_volume_fraction , solid_volume_fraction , distribution , &
@@ -530,6 +531,7 @@ CONTAINS
     REAL*8 :: alfa_s_u_r2(1:n_part)
     REAL*8 :: alfa_g_u_r2
     REAL*8 :: alfa_lw_u_r2
+    REAL*8 :: alfa_ice_u_r2
 
     REAL*8 :: atm_volume_fraction
     REAL*8 :: volcgas_mix_volume_fraction
@@ -553,16 +555,29 @@ CONTAINS
     ! Mass fraction of water vapor in the mixture
     REAL*8 :: wv_mf
 
+    ! Mass fraction of ice in the mixture
+    REAL*8 :: ice_mf
+
     ! Density of liquid water in the mixture
 
     REAL*8 :: rho_lw
+
+    ! Density of ice in the mixture
+
+    REAL*8 :: rho_ice
 
     ! Volume fraction of liquid water in the mixture
 
     REAL*8 :: liquid_water_volume_fraction
 
+    ! Volume fraction of ice in the mixture
+
+    REAL*8 :: ice_volume_fraction
+
    
     rho_lw = 1000
+
+    rho_ice = 920
 
 
     phi = ATAN(w/u)
@@ -718,14 +733,25 @@ CONTAINS
 
     
     ! --- Compute  water vapor mass fraction from other variables --------------
-    CALL eval_temp(enth,pa,cpsolid,tp,wv_mf)
+
+
+    CALL eval_temp(enth,pa,cpsolid,tp,wv_mf,ice_mf)      
 
     ! mass fraction of water vapor in the mixture
     water_vapor_mass_fraction = wv_mf
+
+    ! mass fraction of ice in the mixture
+    ice_mass_fraction = ice_mf
     
     ! mass fraction of liquid water in the mixture    
-    liquid_water_mass_fraction = water_mass_fraction - wv_mf
-    
+    liquid_water_mass_fraction = water_mass_fraction - wv_mf - ice_mf
+
+    !WRITE(*,*) '% liquid_water_mass_fraction',liquid_water_mass_fraction/water_mass_fraction 
+    !WRITE(*,*) '% water_vapour_mass_fraction',water_vapor_mass_fraction/water_mass_fraction 
+    !WRITE(*,*) '% ice_mass_fraction', ice_mass_fraction/water_mass_fraction 
+    !WRITE(*,*) liquid_water_mass_fraction/water_mass_fraction + water_vapor_mass_fraction/water_mass_fraction &
+    !           + ice_mass_fraction/water_mass_fraction
+
     ! constant for mixture of dry air + water vapor + other volcanic gases 
     rgasmix = ( f_(8+n_part*n_mom) * rair + wv_mf * f_(1) * rwv                 &
          + volcgas_mix_mass_fraction * f_(1) * rvolcgas_mix )                   &
@@ -751,12 +777,14 @@ CONTAINS
 
     rhoB_solid_tot_u_r2 = SUM( rhoB_solid_U_r2(1:n_part) )
 
-    alfa_g_u_r2 = ( f_(1) * ( 1.D0 - liquid_water_mass_fraction ) -             &
+    alfa_g_u_r2 = ( f_(1) * ( 1.D0 - liquid_water_mass_fraction - ice_mass_fraction ) -             &
          rhoB_solid_tot_U_r2 ) / rho_gas 
 
     alfa_lw_u_r2 = f_(1) * liquid_water_mass_fraction / rho_lw
 
-    u_r2 = SUM( alfa_s_u_r2(1:n_part) ) + alfa_g_u_r2 + alfa_lw_u_r2 
+    alfa_ice_u_r2 = f_(1) * ice_mass_fraction / rho_ice
+
+    u_r2 = SUM( alfa_s_u_r2(1:n_part) ) + alfa_g_u_r2 + alfa_lw_u_r2 + alfa_ice_u_r2
 
     r = DSQRT( u_r2 / mag_u )
 
@@ -770,7 +798,7 @@ CONTAINS
                SUM(alfa_s_u_r2(1:n_part))/u_r2
           WRITE(*,*) ' alfa_g', alfa_g_u_r2/ u_r2
           WRITE(*,*) ' alfa_lw', alfa_lw_u_r2/ u_r2
-          WRITE(*,*) ( alfa_lw_u_r2 + alfa_g_u_r2 + SUM(alfa_s_u_r2(1:n_part)) )&
+          WRITE(*,*) ( alfa_lw_u_r2 + alfa_ice_u_r2 + alfa_g_u_r2 + SUM(alfa_s_u_r2(1:n_part)) )&
                / u_r2
           
        END IF
@@ -794,6 +822,11 @@ CONTAINS
     liquid_water_volume_fraction = liquid_water_mass_fraction * ( rho_mix       &
          / rho_lw)
 
+    ! --------- ice fractions ------------------------------------------------
+
+    ice_volume_fraction = ice_mass_fraction * ( rho_mix       &
+         / rho_ice)
+
     ! -------- solid fractions --------------------------------------------------
 
     solid_volume_fraction(1:n_part) = alfa_s_u_r2(1:n_part) / u_r2
@@ -814,11 +847,11 @@ CONTAINS
     ! --------- gas fractions ---------------------------------------------------
     ! --------- mixture of dry air + water vapor + other volcanic gases ---------
     
-    gas_mass_fraction = ( f_(1)  * ( 1.D0 - liquid_water_mass_fraction ) -      &
+    gas_mass_fraction = ( f_(1)  * ( 1.D0 - liquid_water_mass_fraction - ice_mass_fraction ) -      &
          rhoB_solid_tot_u_r2 ) / f_(1)
 
     gas_volume_fraction = 1.D0 - solid_tot_volume_fraction -                    &
-         liquid_water_volume_fraction
+         liquid_water_volume_fraction - ice_volume_fraction
 
     volcgas_mix_volume_fraction = volcgas_mix_mass_fraction * ( rho_mix /       &
          rhovolcgas_mix )
@@ -891,20 +924,22 @@ CONTAINS
        WRITE(*,*) 'solid partial volume fractions',solid_partial_volume_fraction 
        WRITE(*,*) 'solid tot volume fraction',solid_tot_volume_fraction       
        WRITE(*,*) 'liquid water volume fraction',liquid_water_volume_fraction
+       WRITE(*,*) 'ice volume fraction',ice_volume_fraction
        WRITE(*,*) 'gas volume fraction',gas_volume_fraction
-       WRITE(*,*) 'sum of previous three volume fractions',                     &
+       WRITE(*,*) 'sum of previous four volume fractions',                     &
             solid_tot_volume_fraction + liquid_water_volume_fraction +          &
-            gas_volume_fraction
+            gas_volume_fraction + ice_volume_fraction
 
        WRITE(*,*) ''
        WRITE(*,*) '************** MASS FRACTIONS **************'
        WRITE(*,*) 'solid partial mass fractions',solid_partial_mass_fraction 
        WRITE(*,*) 'solid tot mass fraction',solid_tot_mass_fraction 
        WRITE(*,*) 'liquid water mass fraction',liquid_water_mass_fraction
+       WRITE(*,*) 'ice mass fraction',ice_mass_fraction
        WRITE(*,*) 'gas mass fraction',gas_mass_fraction
-       WRITE(*,*) 'sum of previous three mass fractions',                       &
+       WRITE(*,*) 'sum of previous four mass fractions',                       &
             solid_tot_mass_fraction + liquid_water_mass_fraction +              &
-            gas_mass_fraction
+            gas_mass_fraction + ice_mass_fraction
 
        WRITE(*,*) 
 
@@ -916,6 +951,7 @@ CONTAINS
             volcgas_mix_mass_fraction + water_vapor_mass_fraction +             &
             dry_air_mass_fraction
        WRITE(*,*) 'liquid water mass fraction',liquid_water_mass_fraction
+       WRITE(*,*) 'ice mass fraction',ice_mass_fraction
        
        WRITE(*,*) ''
        READ(*,*)

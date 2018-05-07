@@ -1,8 +1,8 @@
-hysplit_dir = "/home/demichie/Codes/hysplit/trunk"
-plumemom_dir = "/home/demichie/Codes/PLUME-MoM-multigas"
+hysplit_dir = "/home/federica/hysplit/trunk"
+plumemom_dir = "/home/federica/Scrivania/PLUME-MoM/PLUME-MoM-Multigas"
 runname = 'etna_test'
 starttime="15 12 03 10 00" # Year,month,day,hour,minute
-endemittime = "15 12 03 14 00"
+endemittime = "15 12 03 14 30"
 endruntime = "15 12 03 17 00"
 deltat_plumemom = 3600  # seconds
 
@@ -11,8 +11,8 @@ lon = 15.00  # center longitude of the grid
 model_top = 32000.0
 meteo_file = 'extract_22666.bin'
 
-spacing_lat = 0.01 # degrees between nodes of the sampling grid
-spacing_lon = 0.01 # degrees between nodes of the sampling grid
+spacing_lat = 0.1 # degrees between nodes of the sampling grid
+spacing_lon = 0.1 # degrees between nodes of the sampling grid
 span_lat = 5.00   # the total span of the grid in x direction. For instance, a span of 10 degrees would cover 5 degrees on each side of the center grid location
 span_lon = 5.00   # the total span of the grid in y direction. For instance, a span of 10 degrees would cover 5 degrees on each side of the center grid location
 
@@ -43,10 +43,16 @@ ninit=1  	# particle initialization(0-none; 1-once; 2-add; 3-replace)
 ndump=1  	# dump particles to/from file 0-none or nhrs-output intervall
 ncycl=1 	# pardump output cycle time
 numpar = 1000 	# number of puffs or particles to released per cycle
-maxpar = 30000 # maximum number of particles carried in simulation
-initd = 3 	# initial distribution, particle, puff, or combination
+maxpar = 30000  # maximum number of particles carried in simulation
+initd = 3 	# initial distribution, particle, puff, or combination.  0 = 3D particle (DEFAULT); 1 = Gh-THv; 2 = THh-THv; 3 = Gh-Pv; 4 = THh-Pv
 delt = 10 	# hysplit integration step (minutes)
-pinpf = '' 
+pinpf = ''
+kmixd = 0       # flag for boundary layer depth. Default value, see HYSPLIT used guide
+kmix0 = 250     # minimum mixing depth. Default value, see HYSPLIT used guide
+kzmix = 0       # Vertical Mixing Profile. Default value, see HYSPLIT used guide
+kdef = 0        # Horizontal Turbulence. Default value, see HYSPLIT used guide
+kbls = 1        # Boundary Layer Stability. Default value, see HYSPLIT used guide
+kblt = 2        # Vertical Turbulence. Default value, see HYSPLIT used guide
 
 # CONTROL parameters
 #SAMPLING INTERVAL

@@ -70,6 +70,9 @@ MODULE inpout
   !> Name of output file for the parameters of the beta distribution
   CHARACTER(LEN=30) :: mat_file
 
+  !> Name of output file for the parameters of the beta distribution
+  CHARACTER(LEN=30) :: py_file
+
   !> Name of file for the parameters of the atmosphere
   CHARACTER(LEN=50) :: atm_file
 
@@ -82,6 +85,9 @@ MODULE inpout
 
   !> Beta distribution parameters file unit
   INTEGER :: mat_unit
+
+  !> Beta distribution parameters file unit
+  INTEGER :: py_unit
 
   !> Input data unit
   INTEGER :: inp_unit
@@ -126,7 +132,7 @@ MODULE inpout
         solid_mfr_oldold(:)
 
   NAMELIST / control_parameters / run_name , verbose_level , dakota_flag ,      &
-        inversion_flag , hysplit_flag , aggregation_flag
+        inversion_flag , hysplit_flag , aggregation_flag, water_flag
 
   NAMELIST / inversion_parameters / height_obj , r_min , r_max , n_values ,     &
        w_min , w_max
@@ -210,6 +216,7 @@ CONTAINS
        hysplit_flag = .FALSE.
        inversion_flag = .FALSE.
        aggregation_flag = .FALSE.
+       water_flag = .FALSE.
 
        !---------- parameters of the INERSION_PARAMETERS namelist ------------------
        height_obj = 0.D0
@@ -331,7 +338,8 @@ CONTAINS
     USE moments_module, ONLY : n_nodes
 
     USE mixture_module, ONLY: water_volume_fraction0 , rgasmix , gas_mass_fraction, &
-         water_vapor_mass_fraction , liquid_water_mass_fraction , gas_volume_fraction
+         water_vapor_mass_fraction , liquid_water_mass_fraction , gas_volume_fraction, &
+         ice_mass_fraction
 
     ! External procedures
 
@@ -1298,6 +1306,7 @@ CONTAINS
 
                 END DO
 
+
              ELSEIF ( distribution .EQ. 'constant' ) THEN
 
                 mom0(i_part,i) = diam_constant_phi(i_part)**i
@@ -1544,6 +1553,204 @@ CONTAINS
        
     END IF
 
+
+
+    ! the parameters of the particles phases distributions are saved in a file 
+    ! readable by Python
+
+    IF ( .NOT. dakota_flag ) THEN
+
+       n_unit = n_unit + 1
+       
+       py_unit = n_unit
+       
+       py_file = TRIM(run_name)//'.py'
+       
+       OPEN(py_unit,file=py_file,status='unknown')
+       
+       WRITE(py_unit,111) 'n_part = ',n_part
+       WRITE(py_unit,111) 'n_gas  = ',n_gas
+       WRITE(py_unit,112) 'gas_volume_fraction = ',gas_volume_fraction
+       
+       IF ( distribution .EQ. 'beta' ) THEN
+
+          WRITE(py_unit,113,advance="no") 'p                    = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") p_beta(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") p_beta(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+          WRITE(py_unit,113,advance="no") 'q                    = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") q_beta(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") q_beta(n_part)
+          WRITE(py_unit,117) ' ] '
+
+          WRITE(py_unit,113,advance="no") 'd_max                = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") d_max(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") d_max(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+
+          !WRITE(py_unit,*) 'q = [',q_beta(1:n_part),'];' 
+          !WRITE(py_unit,*) 'd_max = [',d_max(1:n_part),'];'
+          
+          
+       ELSEIF ( distribution .EQ. 'lognormal' ) THEN
+
+
+          WRITE(py_unit,113,advance="no") 'mu                   = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") mu_lognormal(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") mu_lognormal(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+          WRITE(py_unit,113,advance="no") 'sigma                = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") sigma_lognormal(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") sigma_lognormal(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+          
+          
+         
+          
+       ELSEIF ( distribution .EQ. 'constant' ) THEN
+
+          WRITE(py_unit,113,advance="no") 'diam                 = [ '
+
+          DO i = 1, n_part-1
+         
+              WRITE(py_unit,114,advance="no") diam_constant(i)
+              WRITE(py_unit,115,advance="no") ' , '
+
+          END DO
+
+          WRITE(py_unit,116,advance="no") diam_constant(n_part)
+          WRITE(py_unit,117) ' ] '
+
+
+
+          
+          !WRITE(py_unit,*) 'diam = [',diam_constant(1:n_part),'];'
+          
+       END IF
+
+
+       WRITE(py_unit,113,advance="no") 'solid_mass_fractions = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") solid_partial_mass_fraction(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") solid_partial_mass_fraction(n_part)
+       WRITE(py_unit,117) ' ] '
+
+
+
+       WRITE(py_unit,113,advance="no") 'd1                   = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") diam1(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") diam1(n_part)
+       WRITE(py_unit,117) ' ] '
+
+       WRITE(py_unit,113,advance="no") 'd2                   = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") diam2(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") diam2(n_part)
+       WRITE(py_unit,117) ' ] '
+
+       WRITE(py_unit,113,advance="no") 'rho1                 = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") rho1(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") rho1(n_part)
+       WRITE(py_unit,117) ' ] '
+
+       WRITE(py_unit,113,advance="no") 'rho2                 = [ '
+
+       DO i = 1, n_part-1
+         
+           WRITE(py_unit,114,advance="no") rho2(i)
+           WRITE(py_unit,115,advance="no") ' , '
+
+       END DO
+
+       WRITE(py_unit,116,advance="no") rho2(n_part)
+       WRITE(py_unit,117) ' ] '
+      
+       IF ( verbose_level .GE. 1 ) WRITE(*,*) 'Write python file: done' 
+
+111    FORMAT(A9,I1)
+112    FORMAT(A22,F20.10)
+
+113    FORMAT(A25)
+114    FORMAT(F20.10)
+115    FORMAT(A3)
+116    FORMAT(F20.10)
+117    FORMAT(A3)
+       
+       CLOSE(py_unit)
+       
+    END IF
+
+
+
     tend1 = .FALSE.
     
     IF ( distribution .EQ. 'moments' ) THEN
@@ -1760,7 +1967,7 @@ CONTAINS
     USE mixture_module, ONLY: rho_mix , tp , atm_mass_fraction ,               &
          volcgas_mix_mass_fraction , volcgas_mass_fraction,                    &
          dry_air_mass_fraction , water_vapor_mass_fraction ,                   & 
-         liquid_water_mass_fraction
+         liquid_water_mass_fraction, ice_mass_fraction
 
     ! USE plume_model, ONLY : gas_mass_fraction
 
@@ -1803,7 +2010,7 @@ CONTAINS
 97     FORMAT(1x,'     z (m)     ',1x,'       r (m)    ',1x,'      x (m)    ',  &
             1x,'     y (m)     ',1x,'mix.dens(kg/m3)',1x,'temperature(C)',      &
             1x,' vert vel (m/s)',1x,' mag vel (m/s) ',1x,' d.a. massfract',     &
-            1x,' w.v. massfract',1x,' l.w. massfract',1x)
+            1x,' w.v. massfract',1x,' l.w. massfract',1x' i. massfract',1x)
 
 
 98     FORMAT(1x,'sol massfract ')
@@ -1820,9 +2027,9 @@ CONTAINS
 
     WRITE(col_unit,101) z , r , x , y , rho_mix , tp - 273.15D0 , w , mag_u,    &
          dry_air_mass_fraction , water_vapor_mass_fraction ,                    & 
-         liquid_water_mass_fraction , solid_partial_mass_fraction(1:n_part) ,   &
-         volcgas_mass_fraction(1:n_gas) , volcgas_mix_mass_fraction , rho_atm , &
-         mfr , ta, pa
+         liquid_water_mass_fraction , ice_mass_fraction ,                       &
+         solid_partial_mass_fraction(1:n_part) , volcgas_mass_fraction(1:n_gas),& 
+         volcgas_mix_mass_fraction , rho_atm , mfr , ta, pa
 
 
     WRITE(mom_unit,*) z , mom(1:n_part,0:n_mom-1),set_mom(1:n_part,0)
@@ -1908,7 +2115,7 @@ CONTAINS
     USE mixture_module, ONLY: rho_mix , tp , atm_mass_fraction ,               &
          volcgas_mix_mass_fraction , volcgas_mass_fraction,                    &
          dry_air_mass_fraction , water_vapor_mass_fraction ,                   & 
-         liquid_water_mass_fraction
+         liquid_water_mass_fraction, ice_mass_fraction
 
     USE variables, ONLY : height_nbl
 
@@ -1919,7 +2126,7 @@ CONTAINS
     INTEGER :: i , j , n_hy
 
     REAL*8 :: temp_k,mfr
-    REAL*8 :: da_mf,wv_mf,lw_mf,volcgas_tot_mf
+    REAL*8 :: da_mf,wv_mf,lw_mf, ice_mf, volcgas_tot_mf
     REAL*8, ALLOCATABLE :: x_col(:) , y_col(:) , z_col(:) , r_col(:) 
     REAL*8, ALLOCATABLE :: solid_pmf(:,:) , gas_mf(:) , mfr_col(:)
     REAL*8, ALLOCATABLE :: volcgas_mf(:,:)
@@ -1971,7 +2178,7 @@ CONTAINS
        !     mfr_col(i) , ta , pa
 
        READ(read_col_unit,111) z_col(i) , r_col(i) , x_col(i) , y_col(i) ,     &
-	    rho_mix , temp_k , w , mag_u, da_mf , wv_mf , lw_mf ,              &
+	    rho_mix , temp_k , w , mag_u, da_mf , wv_mf , lw_mf , ice_mf,      &
             solid_pmf(1:n_part,i) , volcgas_mf(1:n_gas,i), volcgas_tot_mf,     &
             rho_atm , mfr_col(i) , ta, pa
 
