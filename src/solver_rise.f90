@@ -552,12 +552,6 @@ CONTAINS
 
     REAL*8 :: gas_mix_volume_fraction
 
-    ! Mass fraction of water vapor in the mixture
-    REAL*8 :: wv_mf
-
-    ! Mass fraction of ice in the mixture
-    REAL*8 :: ice_mf
-
     ! Density of liquid water in the mixture
 
     REAL*8 :: rho_lw
@@ -575,9 +569,9 @@ CONTAINS
     REAL*8 :: ice_volume_fraction
 
    
-    rho_lw = 1000
+    rho_lw = 1000.D0
 
-    rho_ice = 920
+    rho_ice = 920.D0
 
 
     phi = ATAN(w/u)
@@ -620,8 +614,8 @@ CONTAINS
 
     ELSE
         
-       rvolcgas_mix=0 
-       cpvolcgas_mix=0
+       rvolcgas_mix = 0.D0 
+       cpvolcgas_mix = 0.D0
 
     END IF
     
@@ -732,19 +726,14 @@ CONTAINS
     enth =  f_(4) / f_(1) - gi * z - 0.5D0 * mag_u**2 
 
     
-    ! --- Compute  water vapor mass fraction from other variables --------------
+    ! --- Compute  water_vapor_mass_fraction, ice_mass_fraction -----------------
+    ! --- and tp from other variables -------------------------------------------
 
-
-    CALL eval_temp(enth,pa,cpsolid,tp,wv_mf,ice_mf)      
-
-    ! mass fraction of water vapor in the mixture
-    water_vapor_mass_fraction = wv_mf
-
-    ! mass fraction of ice in the mixture
-    ice_mass_fraction = ice_mf
+    CALL eval_temp(enth,pa,cpsolid)      
     
     ! mass fraction of liquid water in the mixture    
-    liquid_water_mass_fraction = water_mass_fraction - wv_mf - ice_mf
+    liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+         - ice_mass_fraction
 
     !WRITE(*,*) '% liquid_water_mass_fraction',liquid_water_mass_fraction/water_mass_fraction 
     !WRITE(*,*) '% water_vapour_mass_fraction',water_vapor_mass_fraction/water_mass_fraction 
@@ -753,9 +742,10 @@ CONTAINS
     !           + ice_mass_fraction/water_mass_fraction
 
     ! constant for mixture of dry air + water vapor + other volcanic gases 
-    rgasmix = ( f_(8+n_part*n_mom) * rair + wv_mf * f_(1) * rwv                 &
-         + volcgas_mix_mass_fraction * f_(1) * rvolcgas_mix )                   &
-         / ( f_(8+n_part*n_mom) + f_(1) * ( wv_mf + volcgas_mix_mass_fraction ) )
+    rgasmix = ( f_(8+n_part*n_mom) * rair + water_vapor_mass_fraction * f_(1)   &
+         * rwv + volcgas_mix_mass_fraction * f_(1) * rvolcgas_mix )             &
+         / ( f_(8+n_part*n_mom) + f_(1) * ( water_vapor_mass_fraction           &
+         + volcgas_mix_mass_fraction ) )
 
     ! density of mixture of dry air + water vapor + other volcanic gases 
     rho_gas = pa / ( rgasmix * tp )
@@ -837,7 +827,7 @@ CONTAINS
          solid_tot_volume_fraction
 
     solid_partial_mass_fraction = solid_partial_volume_fraction * rho_solid_avg &
-         /  SUM( solid_partial_volume_fraction * rho_solid_avg )
+         / SUM( solid_partial_volume_fraction * rho_solid_avg )
 
     solid_mass_fraction(1:n_part) = solid_volume_fraction(1:n_part) *           &
          rho_solid_avg(1:n_part) / rho_mix
