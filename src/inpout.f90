@@ -23,8 +23,9 @@ MODULE inpout
 
     USE particles_module, ONLY : aggregation_flag
     
-    USE meteo_module, ONLY: gt , gs , p0 , t0 , h1 , h2 , visc_atm0 , rair ,    &
-         cpair , read_atm_profile , u_r , z_r , exp_wind , wind_mult_coeff ,rwv
+    USE meteo_module, ONLY: gt , gs , p0 , t0 , h1 , h2 , rh , visc_atm0 ,      &
+         rair , cpair , read_atm_profile , u_r , z_r , exp_wind ,               &
+         wind_mult_coeff ,rwv
 
     USE solver_module, ONLY: ds0
 
@@ -142,7 +143,7 @@ MODULE inpout
   NAMELIST / atm_parameters / visc_atm0 , rair , cpair , wind_mult_coeff ,      &
        read_atm_profile , settling_model , shape_factor
   
-  NAMELIST / std_atm_parameters / gt , gs , p0 , t0 , h1 , h2 , u_r , z_r ,     &
+  NAMELIST / std_atm_parameters / gt , gs , p0 , t0 , h1 , h2 , rh , u_r , z_r ,&
        exp_wind
   
   NAMELIST / table_atm_parameters / month , lat , u_r , z_r , exp_wind
@@ -250,6 +251,7 @@ CONTAINS
        u_r = 0.D0
        z_r = 0.D0
        exp_wind = 0.D0
+       rh = 90.D0
  
        !---------- parameters of the INITIAL_VALUES namelist --------------------
 
@@ -1426,12 +1428,12 @@ CONTAINS
 
     END IF
     
-    IF ( ( log10_mfr .GT. 0.d0 ) .AND. ( r0 .GT. 0.d0 ) .AND. ( w0 .EQ. 0.D0 ) ) THEN
-       
-         w0 = ( 10.0**log10_mfr ) / ( pi_g * rho_mix * r0**2 )
-         WRITE(*,*) 'initial velocity',w0
-
-    END IF
+!!$    IF ( ( log10_mfr .GT. 0.d0 ) .AND. ( r0 .GT. 0.d0 ) .AND. ( w0 .EQ. 0.D0 ) ) THEN
+!!$       
+!!$         w0 = ( 10.0**log10_mfr ) / ( pi_g * rho_mix * r0**2 )
+!!$         WRITE(*,*) 'initial velocity',w0
+!!$
+!!$    END IF
 
     DO i_part = 1,n_part
 

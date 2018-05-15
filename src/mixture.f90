@@ -113,7 +113,12 @@ MODULE mixture_module
 
   REAL*8 :: mixture_enthalpy
 
-
+  !> Density of liquid water in the mixture
+  REAL*8 :: rho_lw
+  
+  !> Density of ice in the mixture
+  REAL*8 :: rho_ice
+   
   SAVE
 
 CONTAINS
@@ -132,8 +137,10 @@ CONTAINS
 
     ! external variables
     USE meteo_module, ONLY : pa , rho_atm , rair , rwv , c_wv
+    USE meteo_module, ONLY : cpair , T_ref , h_wv0 , c_ice, h_lw0 , c_lw ,       &
+         da_mol_wt , wv_mol_wt
 
-    USE moments_module, ONLY : n_nodes
+    USE moments_module, ONLY : n_nodes , n_mom
 
     USE particles_module, ONLY: n_part , solid_partial_mass_fraction ,          &
          cp_rhop_mom , mom , rhop_mom , distribution , cp_mom
@@ -162,8 +169,6 @@ CONTAINS
 
     REAL*8 :: volcgas_mix_volume_fraction 
 
-    REAL*8 :: cp_solid0
-
     REAL*8, DIMENSION(n_part,n_nodes) :: xi , wi
 
     INTEGER :: i_part
@@ -178,97 +183,115 @@ CONTAINS
 
     REAL*8 :: rhowv
 
+    REAL*8 :: enth_at_vent
+
+    REAL*8 :: mixt_enth , check_enth
+
+    REAL*8 :: added_water_temp
+
+    REAL*8 :: added_water_mass_fraction
+
+    REAL*8 :: erupted_mass_Fraction
+
+    rho_lw = 1000.D0
+
+    rho_ice = 920.D0
+
+    added_water_temp = 273.D0
+
+    added_water_mass_fraction = 0.5D0
+
     IF ( verbose_level .GE. 1 ) WRITE(*,*) 'initialize_mixture'
 
-    tp = tp0
-
-    ! Compute density of gas species and mixture of gas species
-
-    Rrhovolcgas_mix = 0.D0
-    rvolcgas_mix = 0.D0
-    cpvolcgas_mix = 0.D0
-
-    ! WRITE(*,*) 'n_gas other than H2O',n_gas
+    !--- Mass fractions in the erutped mixture (before adding external water) ---
 
     volcgas_mass_fraction(1:n_gas) = volcgas_mass_fraction0(1:n_gas)
 
     IF ( n_gas .GT. 0 ) THEN
 
-       DO i_gas = 1,n_gas
-
-          rvolcgas_mix = rvolcgas_mix + volcgas_mass_fraction(i_gas)               &
-               * rvolcgas(i_gas)
-
-          cpvolcgas_mix = cpvolcgas_mix + volcgas_mass_fraction(i_gas)             &
-               * cpvolcgas(i_gas)
-
-          ! WRITE(*,*)   pa , rvolcgas(i_gas) , tp0
-
-          Rrhovolcgas_mix = Rrhovolcgas_mix + volcgas_mass_fraction(i_gas)         &
-               / (  pa / ( rvolcgas(i_gas) * tp0 ) )
-
-       END DO
-
-       rvolcgas_mix = rvolcgas_mix / SUM( volcgas_mass_fraction(1:n_gas) )
-
-       cpvolcgas_mix = cpvolcgas_mix / SUM( volcgas_mass_fraction(1:n_gas) )
-
-       rhovolcgas_mix =  SUM(volcgas_mass_fraction(1:n_gas)) / Rrhovolcgas_mix
-
        volcgas_mix_mass_fraction = SUM(volcgas_mass_fraction(1:n_gas))
 
     ELSE
 
-       rvolcgas_mix = 0.D0
-
-       cpvolcgas_mix = 0.D0
-
-       rhovolcgas_mix =  0.D0
-
        volcgas_mix_mass_fraction = 0.D0
 
     END IF
-
-    !WRITE(*,*) 'rvolcgas_mix',rvolcgas_mix
-    !WRITE(*,*) 'cpvolcgas_mix',cpvolcgas_mix
-    !WRITE(*,*) 'rhovolcgas_mix',rhovolcgas_mix
-    !WRITE(*,*) 'volcgas_mix_mass_fraction',volcgas_mix_mass_fraction
-
-
-    rhowv = pa / ( rwv * tp0 )
-
+    
     water_mass_fraction = water_mass_fraction0
 
-    ! ---- We assume all volcanic H2O at the vent is water vapor 
-    water_vapor_mass_fraction = water_mass_fraction0
-    liquid_water_mass_fraction = 0.D0
-    ice_mass_fraction = 0.D0
+    ! All volcanic water is vapour
+    water_vapor_mass_fraction = water_mass_fraction
 
-    ! ---- No air is entrained
+    ! No air is entrained at the vent             
     dry_air_mass_fraction = 0.D0
+    
+    solid_tot_mass_fraction = 1.D0 - water_mass_fraction -                      &
+         volcgas_mix_mass_fraction - dry_air_mass_fraction
 
-    gas_mass_fraction = water_vapor_mass_fraction + volcgas_mix_mass_fraction 
+    WRITE(*,*) 'solid_tot_mass_fraction',solid_tot_mass_fraction
+    WRITE(*,*) 'water_mass_fraction', water_mass_fraction
+    WRITE(*,*) 'volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
+    WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
+    WRITE(*,*) 'water_vapor_mass_fraction', water_vapor_mass_fraction
 
-    !WRITE(*,*) '-------->gas_mass_fraction',gas_mass_fraction
-    !WRITE(*,*) '-------->water_vapor_mass_fraction',water_vapor_mass_fraction
-    !WRITE(*,*) '-------->rhowv ',rhowv 
-    !WRITE(*,*) '--------> volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
-    !WRITE(*,*) '-------->rhovolcgas_mix ',rhovolcgas_mix 
+    DO i_part=1,n_part
 
+       IF ( distribution .EQ. 'constant' ) THEN
 
-    IF ( n_gas .GT. 0 ) THEN 
+          CALL wheeler_algorithm( mom(i_part,0:1), distribution, xi(i_part,:),  &
+               wi(i_part,:) )
 
-       rho_gas = gas_mass_fraction / (  water_vapor_mass_fraction / rhowv          &
-            + volcgas_mix_mass_fraction / rhovolcgas_mix ) 
-    ELSE
+       ELSE
 
-       rho_gas = gas_mass_fraction / (  water_vapor_mass_fraction / rhowv)
+          CALL wheeler_algorithm( mom(i_part,:) , distribution , xi(i_part,:) , &
+               wi(i_part,:) )
+
+       END IF
+
+    END DO
+
+    CALL eval_particles_moments( xi , wi ) 
+
+    IF ( distribution_variable .EQ. "particles_number" ) THEN
+
+       cpsolid = ( SUM( solid_partial_mass_fraction(1:n_part) *                 &
+            cp_rhop_mom(1:n_part,3) / rhop_mom(1:n_part,3) ) ) /                &
+            ( SUM( solid_partial_mass_fraction(1:n_part) ) ) 
+
+    ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
+
+       cpsolid = ( SUM( solid_partial_mass_fraction(1:n_part) *                 &
+            cp_mom(1:n_part,0) ) )                                              &
+            / ( SUM( solid_partial_mass_fraction(1:n_part) ) ) 
 
     END IF
+    
+    !Specific enthalpy before addition of external water
+    enth_at_vent = solid_tot_mass_fraction * cpsolid * tp0                      & 
+         + water_vapor_mass_fraction * ( h_wv0 + c_wv * ( tp0 - T_ref ) )       &
+         + volcgas_mix_mass_fraction * cpvolcgas_mix * tp0
 
-    !WRITE(*,*) '-------->rho_gas',rho_gas
-    !!READ(*,*)
+    WRITE(*,*) 'enth_at_vent',enth_at_vent
+    
+    !------ Corrections of mass fractions and moments for the added water -------
+    erupted_mass_fraction = 1.D0 - added_water_mass_fraction
+    
+    water_mass_fraction = water_mass_fraction * erupted_mass_fraction +         &
+         added_water_mass_fraction
 
+    dry_air_mass_fraction = dry_air_mass_fraction * erupted_mass_fraction
+
+    volcgas_mass_fraction(1:n_gas) = volcgas_mass_fraction(1:n_gas) *           &
+         erupted_mass_fraction
+
+    volcgas_mix_mass_fraction = SUM( volcgas_mass_fraction(1:n_gas) )
+    
+    gas_mass_fraction = volcgas_mix_mass_fraction + water_vapor_mass_fraction
+
+    solid_tot_mass_fraction = solid_tot_mass_fraction * erupted_mass_fraction
+
+    mom(1:n_part,0:n_mom-1) = mom(1:n_part,0:n_mom-1) * erupted_mass_fraction 
+    
     DO i_part=1,n_part
 
        IF ( distribution .EQ. 'constant' ) THEN
@@ -297,7 +320,12 @@ CONTAINS
 
        END DO
 
-
+       !WRITE(*,*) 'n_nodes',n_nodes
+       !WRITE(*,*) 'part_dens_array',part_dens_array
+       !WRITE(*,*) 'wi(i_part,:)',wi(i_part,:)
+       !WRITE(*,*) 'SUM( wi(i_part,:)',SUM( wi(i_part,:) )
+       !WRITE(*,*) ' mom(i_part,0)', mom(i_part,0)
+       
        IF ( distribution_variable .EQ. 'particles_number' ) THEN
 
           rho_solid_avg(i_part) = SUM( part_dens_array * wi(i_part,:)           &
@@ -312,10 +340,13 @@ CONTAINS
 
     END DO
 
+    WRITE(*,*) 'rho_solid_avg',rho_solid_avg
+    
     rho_solid_tot_avg = 1.D0 / SUM( solid_partial_mass_fraction(1:n_part) /     &
          rho_solid_avg(1:n_part) )
 
-
+    WRITE(*,*) 'rho_solid_tot_avg',rho_solid_tot_avg
+    
     DO i_part = 1,n_part
 
        alfa_s(i_part) = solid_partial_mass_fraction(i_part) *                   &
@@ -325,86 +356,139 @@ CONTAINS
 
           WRITE(*,*) 'i_part',i_part
           WRITE(*,*) 'rho_solid_avg',rho_solid_avg(i_part)
-          WRITE(*,*) 'rho_solid_avg',rho_solid_avg(i_part)
           WRITE(*,*) 'alfa_s',i_part,alfa_s(i_part)
 
        END IF
 
     END DO
 
-    rho_solid_tot_avg = 1.D0 / SUM( solid_partial_mass_fraction(1:n_part) /     &
-         rho_solid_avg(1:n_part) )
-
-    gas_volume_fraction = rho_solid_tot_avg / ( rho_gas * ( 1.D0 /              &
-         gas_mass_fraction - 1.D0 ) + rho_solid_tot_avg )
-
-    solid_tot_volume_fraction = 1.D0 - gas_volume_fraction
-
-    solid_tot_mass_fraction = 1.D0 - gas_mass_fraction
-
-
-
-    IF ( verbose_level .GE. 1 ) THEN
-
-       WRITE(*,*) 'solid volume fractions',solid_tot_volume_fraction*alfa_s
-       WRITE(*,*) 'solid_tot_volume_fraction',solid_tot_volume_fraction
-       WRITE(*,*) 'water_volume_fraction',water_volume_fraction
-       WRITE(*,*) 'solid_tot_mass_fraction',solid_tot_mass_fraction
-       !READ(*,*)
-
-    END IF
+    WRITE(*,*) 'alfa_s',alfa_s
 
     CALL eval_particles_moments( xi , wi ) 
+       
+    !---------- Specific enthalpy after addition of external water --------------
+    mixt_enth = erupted_mass_fraction * enth_at_vent +                          &
+         added_water_mass_fraction * ( h_lw0+c_lw * ( added_water_temp-T_ref ) )
+    
+    ! The new temperature and the partitioning of water is computed
+    CALL eval_temp(mixt_enth,pa,cpsolid)
 
+    ! Compute the specific enthalpy with the new temperature and the corrected
+    ! mass fractions
+    check_enth = dry_air_mass_fraction * cpair * tp                             &
+         + solid_tot_mass_fraction * cpsolid * tp                               & 
+         + water_vapor_mass_fraction * ( h_wv0 + c_wv * ( tp - T_ref ) )        &
+         + liquid_water_mass_fraction * ( h_lw0 + c_lw * ( tp - T_ref ) )       &
+         + ice_mass_fraction * ( c_ice * tp )                                   &
+         + volcgas_mix_mass_fraction * cpvolcgas_mix * tp
 
+    gas_mass_fraction = volcgas_mix_mass_fraction + water_vapor_mass_fraction
 
-    IF ( distribution_variable .EQ. "particles_number" ) THEN
+    
+    WRITE(*,*) 'mixt_enth', mixt_enth
+    WRITE(*,*) 'check_enth', check_enth
+    WRITE(*,*) 'tp0,tp',tp0,tp
+    WRITE(*,*) 'solid_tot_mass_fraction',solid_tot_mass_fraction
+    WRITE(*,*) 'water_mass_fraction', water_mass_fraction
+    WRITE(*,*) 'volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
+    WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
+    WRITE(*,*) 'water_vapor_mass_fraction', water_vapor_mass_fraction
+    WRITE(*,*) 'liquid_water_mass_fraction', liquid_water_mass_fraction
+    WRITE(*,*) 'ice_mass_fraction', ice_mass_fraction
+    WRITE(*,*) 'gas_mass_fraction', gas_mass_fraction
+    WRITE(*,*) 'vent_water',( water_mass_fraction-added_water_mass_fraction ) / &
+         erupted_mass_fraction
+    
+    READ(*,*)
 
-       cpsolid = ( SUM( solid_partial_mass_fraction(1:n_part) * cp_rhop_mom(1:n_part,3)     &
-            / rhop_mom(1:n_part,3) ) ) / ( SUM( solid_partial_mass_fraction(1:n_part) ) ) 
+    !--- With the new temperature compute the densities of the gas components ---
 
-    ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
+    ! Compute density of gas species and mixture of gas species
+    rvolcgas_mix = 0.D0
+    cpvolcgas_mix = 0.D0
 
-       cpsolid = ( SUM( solid_partial_mass_fraction(1:n_part) * cp_mom(1:n_part,0) ) )      &
-            / ( SUM( solid_partial_mass_fraction(1:n_part) ) ) 
+    IF ( n_gas .GT. 0 ) THEN
+
+       DO i_gas = 1,n_gas
+
+          rvolcgas_mix = rvolcgas_mix + volcgas_mass_fraction(i_gas)               &
+               * rvolcgas(i_gas)
+
+          cpvolcgas_mix = cpvolcgas_mix + volcgas_mass_fraction(i_gas)             &
+               * cpvolcgas(i_gas)
+
+       END DO
+
+       rvolcgas_mix = rvolcgas_mix / SUM( volcgas_mass_fraction(1:n_gas) )
+       cpvolcgas_mix = cpvolcgas_mix / SUM( volcgas_mass_fraction(1:n_gas) )
+
+    ELSE
+
+       rvolcgas_mix = 0.D0
+       cpvolcgas_mix = 0.D0
 
     END IF
 
+    Rrhovolcgas_mix = 0.D0    
+    IF ( n_gas .GT. 0 ) THEN
 
-    rho_solid_tot_avg = SUM( alfa_s * rho_solid_avg )
+       DO i_gas = 1,n_gas
 
-    ! ... Plume density
-    rho_mix = gas_volume_fraction * rho_gas + solid_tot_volume_fraction *       &
+          Rrhovolcgas_mix = Rrhovolcgas_mix + volcgas_mass_fraction(i_gas)      &
+               / (  pa / ( rvolcgas(i_gas) * tp ) )
+
+       END DO
+
+       rhovolcgas_mix =  SUM(volcgas_mass_fraction(1:n_gas)) / Rrhovolcgas_mix
+
+    ELSE
+
+       rhovolcgas_mix =  0.D0
+
+    END IF
+
+    ! Density of water vapour
+    rhowv = pa / ( rwv * tp )
+
+    ! Density of gas mixture (water vapur+volcanic gas). No dry air at the vent
+    IF ( n_gas .GT. 0 ) THEN 
+
+       rho_gas = gas_mass_fraction / (  water_vapor_mass_fraction / rhowv       &
+            + volcgas_mix_mass_fraction / rhovolcgas_mix ) 
+    ELSE
+
+       rho_gas = gas_mass_fraction / (  water_vapor_mass_fraction / rhowv)
+
+    END IF
+
+    ! Density of the mixture at the vent
+    rho_mix = 1.D0 / ( gas_mass_fraction / rho_gas + solid_tot_mass_fraction /  &
+         rho_solid_tot_avg + liquid_water_mass_fraction / rho_lw +              &
+         ice_mass_fraction / rho_ice )
+
+
+    WRITE(*,*) 'rhowv',rhowv
+    WRITE(*,*) 'rhovolcgas_mix',rhovolcgas_mix
+    WRITE(*,*) 'rho_gas',rho_gas
+    WRITE(*,*) 'rho_ice',rho_ice
+    WRITE(*,*) 'rho_lw',rho_lw
+    WRITE(*,*) 'rho_solid_tot_avg',rho_solid_tot_avg
+    WRITE(*,*) 'rho_mix',rho_mix
+    READ(*,*)
+
+    !--------------- Compute volumetric fractions at the vent ------------------- 
+    gas_volume_fraction = gas_mass_fraction * rho_mix / rho_gas
+
+    solid_tot_volume_fraction = solid_tot_mass_fraction * rho_mix /             &
          rho_solid_tot_avg
 
-    volcgas_mix_mass_fraction = SUM( volcgas_mass_fraction(1:n_gas) )
-    !WRITE(*,*) 'volcgas_mix_mass_fraction',volcgas_mix_mass_fraction
-    !READ(*,*)
 
-    ! ... At the beginning the plume is a mixture of water-vapour , volcanic gas
-    ! ... and particles only (without entrained air)
-
-    IF ( verbose_level .GE. 1 ) THEN
-
-       WRITE(*,*) 'cp_rhop_mom',cp_rhop_mom(:,3)
-       WRITE(*,*) 'rhop_mom',rhop_mom(:,3)
-
-    END IF
-
-    IF ( distribution_variable .EQ. "particles_number" ) THEN
-
-       cp_solid0 = SUM(solid_partial_mass_fraction * cp_rhop_mom(:,3) /         &
-            rhop_mom(:,3) )
-
-    ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
-
-       cp_solid0 = SUM(solid_partial_mass_fraction * cp_mom(:,0) )
-
-    END IF
-
+    !---------- Compute the values of mass flow rate, radius and vent -----------
+    !---------- velocity from the input parameters
+    
     IF ( log10_mfr .GT. 0.d0 ) THEN
 
-       mass_flow_rate = 10.0** log10_mfr
+       mass_flow_rate = 10.0**log10_mfr
 
        WRITE(*,*) 'WARNING: Fixed MER =',mass_flow_rate
 
@@ -424,20 +508,36 @@ CONTAINS
           r = DSQRT( mass_flow_rate / ( pi_g * rho_mix * mag_u ) )
           r0=r
 
-          IF ( write_flag) WRITE(*,*) 'WARNING: Initial radius [m] computed from MER and w0 =',r
+          IF ( write_flag) WRITE(*,*)                                           &
+               'WARNING: Initial radius [m] computed from MER and w0 =',r
+
+       ELSE
+
+          IF ( w .EQ. -1.D0 ) THEN
+
+             r = r0
+             w = mass_flow_rate / ( pi_g * rho_mix * r0**2 )
+             u = 1.D-5    
+             mag_u = DSQRT(u*u+w*w)
+             phi = ATAN(w/u)
+
+             WRITE(*,*) 'WARNING: Initial vel [m/s] computed from MER and r =',w
+
+          END IF
 
        END IF
-
+       
     ELSE
 
        mass_flow_rate = pi_g * rho_mix * mag_u * (r**2)
-       IF ( write_flag) WRITE(*,'(1x,A,1x,es15.8)') 'Initial MER [kgs-1] computed from r0 and w0 =',mass_flow_rate
+       IF ( write_flag) WRITE(*,'(1x,A,1x,es15.8)')                             &
+            'Initial MER [kgs-1] computed from r0 and w0 =',mass_flow_rate
 
     END IF
 
     IF ( verbose_level .GE. 1 ) THEN
 
-       WRITE(*,*) 'cpsolid',cp_solid0
+       WRITE(*,*) 'cpsolid',cpsolid
        WRITE(*,*) 'rho_atm',rho_atm
        WRITE(*,*) 'rho_gas',rho_gas
        WRITE(*,*) 'rho_mix',rho_mix
@@ -485,9 +585,6 @@ CONTAINS
     !> saturation pressure of vapour over ice (hPa)
     REAL*8 :: es
 
-    !> pressure in hPa
-    REAL*8 :: hPres
-
     REAL*8 :: wv_pres
 
     REAL*8 :: lw_mf0 , lw_mf1 , lw_mf2
@@ -502,8 +599,6 @@ CONTAINS
 
     REAL*8 :: enth0 , enth1 , enth2
 
-    hPres = pres / 100.D0
-
     !WRITE(*,*) 'water_mass_fraction', water_mass_fraction
     !WRITE(*,*) 'volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
     !WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
@@ -516,24 +611,24 @@ CONTAINS
 
     IF ( water_flag ) THEN
 
-       IF ( dry_air_mass_fraction .EQ. 0.D0 ) THEN
-
-          ! --- Vent condition: no dry air is in the mixture --------------------
-
-          liquid_water_mass_fraction = 0.D0
-
-          ice_mass_fraction = 0.D0
-
-          water_vapor_mass_fraction = water_mass_fraction 
-
-          tp = ( enth - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref )    &
-               ) / ( solid_tot_mass_fraction * cpsolid                          &
-               + water_vapor_mass_fraction * c_wv                               &
-               + volcgas_mix_mass_fraction * cpvolcgas_mix )
-
-          RETURN
-
-       END IF
+!!$       IF ( dry_air_mass_fraction .EQ. 0.D0 ) THEN
+!!$
+!!$          ! --- Vent condition: no dry air is in the mixture --------------------
+!!$
+!!$          liquid_water_mass_fraction = 0.D0
+!!$
+!!$          ice_mass_fraction = 0.D0
+!!$
+!!$          water_vapor_mass_fraction = water_mass_fraction 
+!!$
+!!$          tp = ( enth - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref )    &
+!!$               ) / ( solid_tot_mass_fraction * cpsolid                          &
+!!$               + water_vapor_mass_fraction * c_wv                               &
+!!$               + volcgas_mix_mass_fraction * cpvolcgas_mix )
+!!$
+!!$          RETURN
+!!$
+!!$       END IF
 
 
        IF ( n_gas .GT. 0) THEN
@@ -1066,7 +1161,6 @@ CONTAINS
 
           es = 611.22D0 * ( 10.D0**es )
 
-          ! f0 = ( hPres - es ) * wv_mol_fract - es * da_mol_fract - es * volcgas_mix_mol_fract
           f0 = ( pres - es ) * wv_mol_fract - es * da_mol_fract - es * volcgas_mix_mol_fract
 
        END IF

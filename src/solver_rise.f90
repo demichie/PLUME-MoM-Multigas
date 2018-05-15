@@ -492,7 +492,7 @@ CONTAINS
          volcgas_mass_fraction , volcgas_mix_mass_fraction , cpvolcgas_mix ,    &
          rvolcgas , cpvolcgas , dry_air_mass_fraction , water_mass_fraction ,   &
          solid_tot_mass_fraction , liquid_water_mass_fraction ,                 &
-         water_vapor_mass_fraction, ice_mass_fraction
+         water_vapor_mass_fraction, ice_mass_fraction , rho_lw , rho_ice
 
     USE particles_module, ONLY : mom , solid_partial_mass_fraction ,            &
          solid_partial_volume_fraction , solid_volume_fraction , distribution , &
@@ -552,13 +552,6 @@ CONTAINS
 
     REAL*8 :: gas_mix_volume_fraction
 
-    ! Density of liquid water in the mixture
-
-    REAL*8 :: rho_lw
-
-    ! Density of ice in the mixture
-
-    REAL*8 :: rho_ice
 
     ! Volume fraction of liquid water in the mixture
 
@@ -568,12 +561,17 @@ CONTAINS
 
     REAL*8 :: ice_volume_fraction
 
-   
-    rho_lw = 1000.D0
 
-    rho_ice = 920.D0
+    ! ---- evaluate the new atmospheric density ad u and temperature at z -------
 
+    CALL zmet
 
+    u = u_atm + f_(2)/f_(1)
+
+    w = f_(3)/f_(1)
+
+    mag_u = SQRT( u*u + w*w ) 
+    
     phi = ATAN(w/u)
 
     
@@ -700,15 +698,6 @@ CONTAINS
     END DO
 
 
-    ! ---- evaluate the new atmospheric density ad u and temperature at z -------
-
-    CALL zmet
-
-    u = u_atm + f_(2)/f_(1)
-
-    w = f_(3)/f_(1)
-
-    mag_u = SQRT( u*u + w*w ) 
 
     IF ( distribution_variable .EQ. "particles_number" ) THEN
 
