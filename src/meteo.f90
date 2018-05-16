@@ -31,6 +31,9 @@ MODULE meteo_module
   
   !> Top height of the tropopause
   REAL*8 :: h2    
+
+  !> Relative humidity for standard atmosphere
+  REAL*8 :: rh
   
   !> Wind angle
   REAL*8 :: cos_theta , sin_theta
@@ -184,6 +187,9 @@ CONTAINS
 
     REAL*8 :: WE_wind_eps , NS_wind_eps , u_atm_eps
 
+    ! Saturation mixing ratio (hPa)
+    REAL*8 :: es
+    
     IF ( read_atm_profile .EQ. 'card' ) THEN
 
        ! interp density profile
@@ -325,6 +331,15 @@ CONTAINS
 
        ENDIF
 
+       es = DEXP( 21.4D0 - ( 5351.D0 / ta) )
+
+       sphu_atm = rh * ( 0.622D0 * es ) / ( pa / 100.D0 )
+
+       !WRITE(*,*) 'z,ta,pa',z,ta,pa
+       !WRITE(*,*) 'es',100.D0*es
+       !WRITE(*,*) 'sphu_atm',sphu_atm
+       !READ(*,*)
+       
     END IF
 
     ! ... Air viscosity ( Armienti et al. 1988)

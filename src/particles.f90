@@ -532,6 +532,9 @@ CONTAINS
 
     END IF
 
+    !WRITE(*,*) 'rho1(i_part),rho2(i_part)',rho1(i_part),rho2(i_part)
+    !WRITE(*,*) 'diam,particles_density',diam,particles_density
+    
     RETURN
 
   END FUNCTION particles_density

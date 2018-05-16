@@ -484,7 +484,7 @@ CONTAINS
   
   SUBROUTINE unlump(f_)
 
-    USE meteo_module, ONLY: u_atm , rair , pa , cpair , rwv , rho_atm
+    USE meteo_module, ONLY: u_atm , rair , pa , cpair , rwv , rho_atm , T_ref
 
     USE mixture_module, ONLY: rho_gas , rgasmix , rho_mix , tp ,                &
          gas_volume_fraction , solid_tot_volume_fraction , gas_mass_fraction ,  &
@@ -492,7 +492,8 @@ CONTAINS
          volcgas_mass_fraction , volcgas_mix_mass_fraction , cpvolcgas_mix ,    &
          rvolcgas , cpvolcgas , dry_air_mass_fraction , water_mass_fraction ,   &
          solid_tot_mass_fraction , liquid_water_mass_fraction ,                 &
-         water_vapor_mass_fraction, ice_mass_fraction
+         water_vapor_mass_fraction, ice_mass_fraction , rho_lw , rho_ice,       &
+         exit_status
 
     USE particles_module, ONLY : mom , solid_partial_mass_fraction ,            &
          solid_partial_volume_fraction , solid_volume_fraction , distribution , &
@@ -503,11 +504,12 @@ CONTAINS
 
     USE moments_module, ONLY: n_nodes 
 
-    USE variables, ONLY : gi , pi_g , verbose_level
+    USE variables, ONLY : gi , pi_g , verbose_level , water_flag
 
     USE meteo_module, ONLY : zmet
 
-    USE mixture_module, ONLY : eval_temp
+    USE mixture_module, ONLY : eval_temp_wv_lw, eval_temp_wv_ice,               &
+        eval_temp_wv_lw_ice , eval_temp_no_water 
 
     USE moments_module, ONLY : moments_correction_wright
     USE moments_module, ONLY : moments_correction, wheeler_algorithm 
@@ -552,19 +554,6 @@ CONTAINS
 
     REAL*8 :: gas_mix_volume_fraction
 
-    ! Mass fraction of water vapor in the mixture
-    REAL*8 :: wv_mf
-
-    ! Mass fraction of ice in the mixture
-    REAL*8 :: ice_mf
-
-    ! Density of liquid water in the mixture
-
-    REAL*8 :: rho_lw
-
-    ! Density of ice in the mixture
-
-    REAL*8 :: rho_ice
 
     ! Volume fraction of liquid water in the mixture
 
@@ -574,12 +563,17 @@ CONTAINS
 
     REAL*8 :: ice_volume_fraction
 
-   
-    rho_lw = 1000
 
-    rho_ice = 920
+    ! ---- evaluate the new atmospheric density ad u and temperature at z -------
 
+    CALL zmet
 
+    u = u_atm + f_(2)/f_(1)
+
+    w = f_(3)/f_(1)
+
+    mag_u = SQRT( u*u + w*w ) 
+    
     phi = ATAN(w/u)
 
     
@@ -620,8 +614,8 @@ CONTAINS
 
     ELSE
         
-       rvolcgas_mix=0 
-       cpvolcgas_mix=0
+       rvolcgas_mix = 0.D0 
+       cpvolcgas_mix = 0.D0
 
     END IF
     
@@ -706,15 +700,6 @@ CONTAINS
     END DO
 
 
-    ! ---- evaluate the new atmospheric density ad u and temperature at z -------
-
-    CALL zmet
-
-    u = u_atm + f_(2)/f_(1)
-
-    w = f_(3)/f_(1)
-
-    mag_u = SQRT( u*u + w*w ) 
 
     IF ( distribution_variable .EQ. "particles_number" ) THEN
 
@@ -732,19 +717,57 @@ CONTAINS
     enth =  f_(4) / f_(1) - gi * z - 0.5D0 * mag_u**2 
 
     
-    ! --- Compute  water vapor mass fraction from other variables --------------
+    ! --- Compute  water_vapor_mass_fraction, ice_mass_fraction -----------------
+    ! --- and tp from other variables -------------------------------------------
+
+       
+    IF (water_flag) THEN 
+
+        ! --- CASE1: for tp >= T_ref: only water vapour and liquid water --------  
+
+        CALL eval_temp_wv_lw(enth,pa,cpsolid)
+
+        liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+         - ice_mass_fraction
+
+        ! --- CASE2: for T_ref - 40 < tp < T_ref: water vapour, liquid water -----
+        ! --- and ice ------------------------------------------------------------ 
+
+        SEARCH_TEMP: IF ( ( tp .GT. (T_ref-40) ) .AND. ( tp .LT. T_ref) .AND. ( liquid_water_mass_fraction .GT. 0.D0 ) ) THEN
+
+            CALL eval_temp_wv_lw_ice(enth,pa,cpsolid)
+
+            liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+               - ice_mass_fraction
+
+            ! --- for exit status = 1: no equilibrium between vapour - liquid ---- 
+            ! --- and ice, skip to CASE 3 (vapour and ice) -----------------------
+ 
+            IF (exit_status .EQ. 1.D0) CALL eval_temp_wv_ice(enth,pa,cpsolid)
+
+        ! --- CASE3: for tp < T_ref - 40: water vapour and ice -------------------
+           
+        ELSEIF ( tp .LT. (T_ref - 40.D0) ) THEN
+
+            CALL eval_temp_wv_ice(enth,pa,cpsolid)
+        
+            liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+            - ice_mass_fraction
 
 
-    CALL eval_temp(enth,pa,cpsolid,tp,wv_mf,ice_mf)      
+        END IF SEARCH_TEMP
+ 
+    ELSE
+    
+        ! --- Evaluate tp for water_flag = false: only water vapour ----------------
 
-    ! mass fraction of water vapor in the mixture
-    water_vapor_mass_fraction = wv_mf
+        CALL eval_temp_no_water(enth,pa,cpsolid)
 
-    ! mass fraction of ice in the mixture
-    ice_mass_fraction = ice_mf
+    END IF
     
     ! mass fraction of liquid water in the mixture    
-    liquid_water_mass_fraction = water_mass_fraction - wv_mf - ice_mf
+    !liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+    !     - ice_mass_fraction
 
     !WRITE(*,*) '% liquid_water_mass_fraction',liquid_water_mass_fraction/water_mass_fraction 
     !WRITE(*,*) '% water_vapour_mass_fraction',water_vapor_mass_fraction/water_mass_fraction 
@@ -753,9 +776,10 @@ CONTAINS
     !           + ice_mass_fraction/water_mass_fraction
 
     ! constant for mixture of dry air + water vapor + other volcanic gases 
-    rgasmix = ( f_(8+n_part*n_mom) * rair + wv_mf * f_(1) * rwv                 &
-         + volcgas_mix_mass_fraction * f_(1) * rvolcgas_mix )                   &
-         / ( f_(8+n_part*n_mom) + f_(1) * ( wv_mf + volcgas_mix_mass_fraction ) )
+    rgasmix = ( f_(8+n_part*n_mom) * rair + water_vapor_mass_fraction * f_(1)   &
+         * rwv + volcgas_mix_mass_fraction * f_(1) * rvolcgas_mix )             &
+         / ( f_(8+n_part*n_mom) + f_(1) * ( water_vapor_mass_fraction           &
+         + volcgas_mix_mass_fraction ) )
 
     ! density of mixture of dry air + water vapor + other volcanic gases 
     rho_gas = pa / ( rgasmix * tp )
@@ -837,7 +861,7 @@ CONTAINS
          solid_tot_volume_fraction
 
     solid_partial_mass_fraction = solid_partial_volume_fraction * rho_solid_avg &
-         /  SUM( solid_partial_volume_fraction * rho_solid_avg )
+         / SUM( solid_partial_volume_fraction * rho_solid_avg )
 
     solid_mass_fraction(1:n_part) = solid_volume_fraction(1:n_part) *           &
          rho_solid_avg(1:n_part) / rho_mix

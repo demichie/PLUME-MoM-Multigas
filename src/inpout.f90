@@ -23,8 +23,9 @@ MODULE inpout
 
     USE particles_module, ONLY : aggregation_flag
     
-    USE meteo_module, ONLY: gt , gs , p0 , t0 , h1 , h2 , visc_atm0 , rair ,    &
-         cpair , read_atm_profile , u_r , z_r , exp_wind , wind_mult_coeff ,rwv
+    USE meteo_module, ONLY: gt , gs , p0 , t0 , h1 , h2 , rh , visc_atm0 ,      &
+         rair , cpair , read_atm_profile , u_r , z_r , exp_wind ,               &
+         wind_mult_coeff ,rwv
 
     USE solver_module, ONLY: ds0
 
@@ -32,7 +33,8 @@ MODULE inpout
 
     USE mixture_module, ONLY: n_gas , rvolcgas , cpvolcgas , rvolcgas_mix ,     &
          volcgas_mass_fraction , volcgas_mix_mass_fraction , cpvolcgas_mix ,    &
-         rhovolcgas_mix , volcgas_mol_wt , rhovolcgas , volcgas_mass_fraction0
+         rhovolcgas_mix , volcgas_mol_wt , rhovolcgas , volcgas_mass_fraction0, &
+         rho_lw, rho_ice, added_water_temp, added_water_mass_fraction
 
   IMPLICIT NONE
 
@@ -139,10 +141,14 @@ MODULE inpout
   
   NAMELIST / plume_parameters / alpha_inp , beta_inp , particles_loss
   
+  NAMELIST / water_parameters / rho_lw , rho_ice , added_water_temp ,              &
+
+       added_water_mass_fraction
+
   NAMELIST / atm_parameters / visc_atm0 , rair , cpair , wind_mult_coeff ,      &
        read_atm_profile , settling_model , shape_factor
   
-  NAMELIST / std_atm_parameters / gt , gs , p0 , t0 , h1 , h2 , u_r , z_r ,     &
+  NAMELIST / std_atm_parameters / gt , gs , p0 , t0 , h1 , h2 , rh , u_r , z_r ,&
        exp_wind
   
   NAMELIST / table_atm_parameters / month , lat , u_r , z_r , exp_wind
@@ -231,6 +237,12 @@ CONTAINS
        beta_inp = 0.6D0
        particles_loss = .TRUE.
 
+       !---------- parameters of the WATER_PARAMETERS namelist -------------------
+       rho_lw = 1000.D0
+       rho_ice = 920.D0
+       added_water_temp = 273.D0
+       added_water_mass_fraction = 0.D0
+
        !---------- parameters of the ATM_PARAMETERS namelist -----------------------
        VISC_ATM0 =  1.8D-5
        RAIR=  287.026
@@ -250,7 +262,8 @@ CONTAINS
        u_r = 0.D0
        z_r = 0.D0
        exp_wind = 0.D0
- 
+       rh = 90.D0
+
        !---------- parameters of the INITIAL_VALUES namelist --------------------
 
        R0 = 0.D0 
@@ -282,7 +295,7 @@ CONTAINS
 
        rvolcgas(1) = 462.D0
        cpvolcgas(1) = 1810.0
-       volcgas_mass_fraction0(1) = 1.D0
+       volcgas_mass_fraction0(1) = 1.0D-3
        volcgas_mol_wt(1) = 0.018D0
 
        rvolcgas_mix = volcgas_mass_fraction0(1) * rvolcgas(1)
@@ -303,6 +316,7 @@ CONTAINS
 
        WRITE(inp_unit, control_parameters )
        WRITE(inp_unit, plume_parameters )
+       WRITE(inp_unit, water_parameters )
        WRITE(inp_unit, atm_parameters )
        WRITE(inp_unit, std_atm_parameters )
        WRITE(inp_unit, initial_values )
@@ -349,7 +363,7 @@ CONTAINS
 
     USE meteo_module, ONLY : rho_atm_month_lat , pres_atm_month_lat ,  temp_atm_month_lat
 
-    USE mixture_module, ONLY : eval_wv
+    ! USE mixture_module, ONLY : eval_wv
 
     USE moments_module, ONLY : beta_function , wheeler_algorithm , coefficient
 
@@ -476,13 +490,32 @@ CONTAINS
        
     END IF
 
+
     READ(inp_unit, plume_parameters)
     WRITE(bak_unit, plume_parameters)
+
+
+    IF (water_flag) THEN
+
+       READ(inp_unit, water_parameters)
+       WRITE(bak_unit, water_parameters)
+
+    ELSE
+       
+       rho_ice = 920.D0
+       rho_lw = 1000.D0
+       added_water_mass_fraction = 0.D0
+       added_water_temp = 273.D0
+
+    END IF
+
 
     IF ( verbose_level .GE. 1 ) WRITE(*,*) 'read plume_parameters: done'
 
     READ(inp_unit, atm_parameters)
     WRITE(bak_unit, atm_parameters)
+
+
 
     IF ( read_atm_profile .EQ. 'table' ) THEN
 
@@ -1006,10 +1039,19 @@ CONTAINS
 
     ELSE
 
-       n_nodes = NINT(0.5D0 * n_mom)
+       IF ( MOD(n_mom,2) == 0 ) THEN
+       
+          n_nodes = NINT(0.5D0 * n_mom)
 
+       ELSE
+
+           WRITE(*,*) 'ERROR: number of moments should be even. n_mom =',n_mom
+           STOP
+
+       END IF
+          
     END IF
-
+ 
     IF ( hysplit_flag ) THEN
 
        IF (  distribution .NE. 'constant' ) THEN
@@ -1417,12 +1459,12 @@ CONTAINS
 
     END IF
     
-    IF ( ( log10_mfr .GT. 0.d0 ) .AND. ( r0 .GT. 0.d0 ) .AND. ( w0 .EQ. 0.D0 ) ) THEN
-       
-         w0 = ( 10.0**log10_mfr ) / ( pi_g * rho_mix * r0**2 )
-         WRITE(*,*) 'initial velocity',w0
-
-    END IF
+!!$    IF ( ( log10_mfr .GT. 0.d0 ) .AND. ( r0 .GT. 0.d0 ) .AND. ( w0 .EQ. 0.D0 ) ) THEN
+!!$       
+!!$         w0 = ( 10.0**log10_mfr ) / ( pi_g * rho_mix * r0**2 )
+!!$         WRITE(*,*) 'initial velocity',w0
+!!$
+!!$    END IF
 
     DO i_part = 1,n_part
 

@@ -6,16 +6,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 from mpl_toolkits.mplot3d import Axes3D
+import easygui
 
+filename = easygui.fileopenbox( filetypes=['*.bak'])
 
-pathname = os.getcwd()
-root = Tkinter.Tk()
-root.withdraw()
-filename= tkFileDialog.askopenfilename(filetypes=[('Pick a file','*.bak')])
+#pathname = os.getcwd()
+#root = Tkinter.Tk()
+#root.withdraw()
+#filename= tkFileDialog.askopenfilename(filetypes=[('Pick a file','*.bak')])
+
+#      z (m)             r (m)           x (m)          y (m)      mix.dens(kg/m3) temperature(C)  vert vel (m/s)  mag vel (m/s)   d.a. massfract  w.v. massfract  l.w. massfract  i. massfract  sol massfract  sol massfract   volgasmix.massf atm.rho(kg/m3)  MFR (kg/s)      atm.temp (K)    atm pres (Pa) 
 
 filename = filename.split('/')[-1]
 filename = re.sub('\.bak$', '', filename)
 
+#filename='test_weak'
 prova_bak = open("%s.bak" % filename, "r")
 findpart = 'N_PART'
 for num, line in enumerate(prova_bak, 1):
@@ -141,8 +146,16 @@ solid_tot_mass_fraction[:,0] = np.sum(solid_mass_fraction,axis=1)
 rho_atm = prova[:,12+n_part+n_gas+1]
 rho_atm = rho_atm.reshape((-1,1))
 
+
 mfr = prova[:,12+n_part+n_gas+2]
 mfr = mfr.reshape((-1,1))
+
+temp_atm = prova[:,12+n_part+n_gas+3]
+temp_atm = temp_atm.reshape((-1,1))
+
+p_atm = prova[:,12+n_part+n_gas+4]
+p_atm = p_atm.reshape((-1,1))
+
 
 n_z = z.shape[0]
 
@@ -168,7 +181,9 @@ plt.ylabel('Height (km)')
 
 plt.subplot(2, 2, 2)
 
-lines = plt.plot(wvapour_mass_fraction,z,liquid_water_mass_fraction,z, ice_mass_fraction, z,'--')
+water = wvapour_mass_fraction + liquid_water_mass_fraction + ice_mass_fraction
+
+lines = plt.plot(wvapour_mass_fraction/water,z,'.',liquid_water_mass_fraction/water,z,'.', ice_mass_fraction/water, z,'.')
 
 plt.xlabel('Water mass fraction')
 plt.ylabel('Height (km)')
@@ -196,7 +211,22 @@ names = ['part','gas','lq','ice']
 plt.legend(lines, [names[j] for j in range(len(names))])
 fig.tight_layout()
 fig.savefig(str(filename)+'_mass_fraction.pdf')   # save the figure to file
-plt.close()
+#plt.close()
+
+
+# temperature
+
+fig = plt.figure()
+
+
+plt.plot(temp+273,z)
+plt.axvline(273, c = 'r')
+plt.axvline(233, c = 'r')
+#plt.plot(temp_atm,z,'.r')
+plt.xlabel('Temp [K]')
+plt.ylabel('Height (km)')
+fig.savefig(str(filename)+'_temp.pdf')   # save the figure to file
+#plt.close()
 
 # PARTICLE LOSS FRACTION
 
@@ -220,7 +250,7 @@ for i in range(n_part):
 plt.xlabel('Particles mass loss fraction')
 plt.ylabel('Height (km)')
 fig.savefig(str(filename)+'_particles_loss_fraction.pdf')   # save the figure to file
-plt.close()
+#plt.close()
 
 
 
@@ -307,7 +337,7 @@ else:
 
 fig.tight_layout()
 fig.savefig(str(filename)+'_moments.pdf')   # save the figure to file
-plt.close()
+#plt.close()
 
 # VARIABLES
 
@@ -337,13 +367,14 @@ plt.ylabel('Height (km)')
 plt.subplot(2, 2, 4)
 
 plt.plot(rho_rel,z)
+#plt.plot(rho_atm,z,'.r')
 
 plt.xlabel('Relative density (kg/m$^3$)')
 plt.ylabel('Height (km)')
 
 fig.tight_layout()
 fig.savefig(str(filename)+'_profiles.pdf')   # save the figure to file
-plt.close()
+#plt.close()
 
 # plot plume 3d
 
@@ -436,17 +467,9 @@ ax.set_ylabel('y (km)')
 ax.set_zlabel('z (km)')
 fig.tight_layout()   
 fig.savefig(str(filename)+'_plume.pdf')   # save the figure to file
-plt.close()
+#plt.close()
 
 
-
-
-
-
-
-
-
-
-
+plt.show()
 
 
