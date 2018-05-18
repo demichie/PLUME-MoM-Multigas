@@ -248,13 +248,7 @@ CONTAINS
 
     CALL eval_particles_moments( xi , wi ) 
 
-    IF ( distribution_variable .EQ. "particles_number" ) THEN
-
-       cpsolid = ( SUM( solid_partial_mass_fraction(1:n_part) *                 &
-            cp_rhop_mom(1:n_part,3) / rhop_mom(1:n_part,3) ) ) /                &
-            ( SUM( solid_partial_mass_fraction(1:n_part) ) ) 
-
-    ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
+    IF ( distribution_variable .EQ. "mass_fraction" ) THEN
 
        cpsolid = ( SUM( solid_partial_mass_fraction(1:n_part) *                 &
             cp_mom(1:n_part,0) ) )                                              &
@@ -322,12 +316,7 @@ CONTAINS
        !WRITE(*,*) 'SUM( wi(i_part,:)',SUM( wi(i_part,:) )
        !WRITE(*,*) ' mom(i_part,0)', mom(i_part,0)
 
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          rho_solid_avg(i_part) = SUM( part_dens_array * wi(i_part,:)           &
-               * xi(i_part,:)**3 ) / mom(i_part,3)
-
-       ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+       IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
 
           rho_solid_avg(i_part) = 1.D0 / ( SUM( wi(i_part,:) / part_dens_array )&
                / mom(i_part,0) )

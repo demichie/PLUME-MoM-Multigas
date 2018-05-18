@@ -208,13 +208,7 @@ CONTAINS
 
     solid_term = 0.D0
 
-    IF ( distribution_variable .EQ. "particles_number" ) THEN
-
-       ! See Eq. 20 PlumeMoM- GMD
-       solid_term = SUM( solid_volume_fraction(1:n_part) *                      &
-            set_rhop_mom(1:n_part,3) )
-
-    ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
+    IF ( distribution_variable .EQ. "mass_fraction" ) THEN
 
        ! See Eq. 34 PlumeMoM- GMD
        solid_term = rho_mix * SUM( set_mom(1:n_part,0) * mom(1:i_part,0) )
@@ -248,12 +242,7 @@ CONTAINS
 
     cp_solid_term = 0.D0
 
-    IF ( distribution_variable .EQ. "particles_number" ) THEN
-
-       cp_solid_term = SUM( solid_volume_fraction(1:n_part) *                   &
-            set_cp_rhop_mom(1:n_part,3) )
-
-    ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
+    IF ( distribution_variable .EQ. "mass_fraction" ) THEN
 
        cp_solid_term = rho_mix * SUM( solid_mass_fraction(1:n_part) *           &
             set_cp_mom(1:n_part,0) )
@@ -292,13 +281,7 @@ CONTAINS
 
        DO i=0,n_mom-1
 
-          IF ( distribution_variable .EQ. "particles_number" ) THEN
-
-             !---- Momentum equation RHS term (Eq. 16 PlumeMoM - GMD)
-             rhs_(8+i+(i_part-1)*n_mom) = - 2.D0 * prob_factor * r *            &
-                  set_mom(i_part,i) * mom(i_part,i) 
-
-          ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
+          IF ( distribution_variable .EQ. "mass_fraction" ) THEN
 
              !---- Momentum equation RHS term (Eq. 32 PlumeMoM - GMD)
              rhs_(8+i+(i_part-1)*n_mom) = - 2.D0 * prob_factor * r *            &
@@ -391,11 +374,7 @@ CONTAINS
 
           idx = 8+i_mom+(i_part-1)*n_mom
 
-          IF ( distribution_variable .EQ. "particles_number" ) THEN
-
-             f_(idx) = mag_u * r**2 * mom(i_part,i_mom)
-
-          ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
+          IF ( distribution_variable .EQ. "mass_fraction" ) THEN
 
              f_(idx) = mag_u * r**2 * mom(i_part,i_mom) * rho_mix
 
@@ -453,12 +432,8 @@ CONTAINS
 
           IF ( fnew(8+i_mom+(i_part-1)*n_mom) .LE. 0.D0 ) THEN
 
-             IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-                WRITE(*,*) 'WARNING: negative moment, part',i_part,'mom',i_mom
+             WRITE(*,*) 'WARNING: negative moment, part',i_part,'mom',i_mom
                 
-             END IF
-
           END IF
 
        ENDDO
@@ -635,19 +610,7 @@ CONTAINS
        idx1 = 8 + 0 + n_mom * ( i_part - 1 )
        idx2 = 8 + n_mom - 1 + n_mom * ( i_part - 1 )
 
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          IF ( distribution .EQ. 'constant' ) THEN
-
-             CALL moments_correction( f_(idx1:idx2) , iter )
-!             CALL moments_correction_wright( f_(idx1:idx2) )
-          ELSE
-
-             CALL moments_correction( f_(idx1:idx2) , iter )
-
-          END IF
-
-       END IF
+       ! CALL moments_correction( f_(idx1:idx2) , iter )
 
        IF ( distribution .EQ. 'constant' ) THEN
 
@@ -668,17 +631,7 @@ CONTAINS
        END DO
        
        
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          rhoB_solid_U_r2(i_part) = SUM( part_dens_array(i_part,:) *            &
-            wi_temp(i_part,:) * xi(i_part,:)**3 ) / 6.D0 * pi_g
-
-
-          rho_solid_avg(i_part) = SUM( part_dens_array(i_part,:) *              &
-               wi_temp(i_part,:) * xi(i_part,:)**3 ) /                          &
-               SUM( wi_temp(i_part,:) * xi(i_part,:)**3 )
-
-       ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+       IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
 
           rhoB_solid_U_r2(i_part) = f_(idx1)
 
@@ -698,14 +651,7 @@ CONTAINS
 
     END DO
 
-
-
-    IF ( distribution_variable .EQ. "particles_number" ) THEN
-
-       cpsolid = ( SUM( rhoB_solid_U_r2(1:n_part) * cp_rhop_mom(1:n_part,3)     &
-            / rhop_mom(1:n_part,3) ) ) / ( SUM( rhoB_solid_U_r2(1:n_part) ) ) 
-
-    ELSEIF ( distribution_variable .EQ. "mass_fraction" ) THEN
+    IF ( distribution_variable .EQ. "mass_fraction" ) THEN
 
        cpsolid = ( SUM( rhoB_solid_U_r2(1:n_part) * cp_mom(1:n_part,0) ) )      &
             / ( SUM( rhoB_solid_U_r2(1:n_part) ) ) 
@@ -862,11 +808,7 @@ CONTAINS
        idx1 = 8 + 0 + n_mom * ( i_part - 1 )
        idx2 = 8 + n_mom - 1 + n_mom * ( i_part - 1 )
 
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          mom(i_part,0:n_mom-1) = f_(idx1:idx2) / ( u_r2 ) 
-
-       ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+       IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
 
           mom(i_part,0:n_mom-1) = f_(idx1:idx2) / ( rho_mix * u_r2 ) 
 

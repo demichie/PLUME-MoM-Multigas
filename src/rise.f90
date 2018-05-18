@@ -195,16 +195,7 @@ CONTAINS
 
        WRITE(x1,'(I2.2)') i_part ! converting integer to string using a 'internal file'
 
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          k1 = log( 1.D3 * mom0(i_part,1) / mom0(i_part,0) )
-          k2 = log( 1.D3 * mom0(i_part,3) / mom0(i_part,2) )
-
-          mu_phi = - 0.25D0 * ( 5*k2 - k1 ) / log(2.D0)
-
-          sigma_phi = sqrt( 0.5d0 * (k2-k1) ) / log(2.D0)
-
-       ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+       IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
 
           mu_phi = mom0(i_part,1)/mom0(i_part,0)
 
@@ -571,16 +562,7 @@ CONTAINS
 
        WRITE(x1,'(I2.2)') i_part ! convert int to string using an 'internal file'
 
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          k1 = log( 1.D3 * mom(i_part,1) / mom(i_part,0) )
-          k2 = log( 1.D3 * mom(i_part,3) / mom(i_part,2) )
-
-          mu_phi = - 0.25D0 * ( 5*k2 - k1 ) / log(2.D0)
-
-          sigma_phi = sqrt( 0.5d0 * (k2-k1) ) / log(2.D0)
-
-       ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+       IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
 
           mu_phi = mom(i_part,1)/mom(i_part,0)
 

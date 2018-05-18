@@ -276,7 +276,7 @@ CONTAINS
        DS0 =  5.D0
        N_PART = 1
        DISTRIBUTION = 'lognormal'
-       DISTRIBUTION_VARIABLE = 'particles_number'
+       DISTRIBUTION_VARIABLE = 'mass_fraction'
        N_MOM = 6
        n_gas = 1
        ALLOCATE ( rvolcgas(n_gas) , cpvolcgas(n_gas) , volcgas_mol_wt(n_gas) ,  &
@@ -1308,30 +1308,7 @@ CONTAINS
 
        DO i = 0, n_mom-1
 
-          IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-             IF ( distribution .EQ. 'beta' ) THEN
-
-                mom0(i_part,i) = d_max(i_part)**i *beta_function(p_beta(i_part) &
-                     +i,q_beta(i_part)) / beta_function(p_beta(i_part) ,        &
-                     q_beta(i_part))
-
-             ELSEIF ( distribution .EQ. 'lognormal' ) THEN
-
-                mom0(i_part,i) = 6.d0 / pi_g * 10.D0**(-3*(i-3)) *              &
-                     EXP( ( i-3.D0 ) * mu_bar(i_part) + ( i - 3.D0 )**2 / 2.D0  &
-                     * sigma_bar(i_part)**2 ) 
-
-                IF ( verbose_level .GE. 1 ) WRITE(*,*) 'before correction',     &
-                     mom0(i_part,i) 
-
-             ELSEIF ( distribution .EQ. 'constant' ) THEN
-
-                mom0(i_part,i) = diam_constant(i_part)**i
-
-             END IF
-
-          ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+          IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
 
              IF ( distribution .EQ. 'lognormal' ) THEN
 
@@ -1393,12 +1370,7 @@ CONTAINS
        ! independent from the mass fraction of the particles phases, so
        ! it is possible to evaluate them with the "uncorrected" moments
 
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          rho_solid_avg(i_part) = SUM( part_dens_array * wi * xi**3 ) /         &
-               mom0(i_part,3)
-
-       ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+       IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
 
           rho_solid_avg(i_part) = 1.D0 / ( SUM( wi / part_dens_array ) /        &
                mom0(i_part,0) )
@@ -1491,11 +1463,7 @@ CONTAINS
        ! the coefficient C0 (=mom0) for the particles size distribution is
        ! evaluated in order to have the corrected volume or mass fractions
 
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          C0 = 6.D0 / pi_g * solid_volume_fraction0(i_part) / mom0(i_part,3)
-          
-       ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+       IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
           
           C0 = SUM(solid_mass_fraction(1:n_part)) / mom0(i_part,0) *            &
                solid_partial_mass_fraction(i_part)
@@ -1530,13 +1498,7 @@ CONTAINS
 
     IF ( verbose_level .GE. 1 ) THEN
 
-       IF ( distribution_variable .EQ. 'particles_number' ) THEN
-
-          WRITE(*,*) 'solid_mass_fractions', mom0(1:n_part,3) *                 &
-               rho_solid_avg(1:n_part) / ( SUM( mom0(1:n_part,3) *              &
-               rho_solid_avg(1:n_part)) )
-          
-       ELSEIF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+       IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
           
           WRITE(*,*) 'solid_mass_fractions', mom0(1:n_part,0)
           
