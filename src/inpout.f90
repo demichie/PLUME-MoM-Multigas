@@ -122,6 +122,7 @@ MODULE inpout
   !> Inversion variables data unit
   INTEGER :: inversion_unit
 
+  REAL*8 :: mfr0
   
   REAL*8, ALLOCATABLE :: mu_lognormal(:) , sigma_lognormal(:)
 
@@ -153,7 +154,7 @@ MODULE inpout
   
   NAMELIST / table_atm_parameters / month , lat , u_r , z_r , exp_wind
 
-  NAMELIST / initial_values / r0 , w0 , log10_mfr , tp0 ,                       &
+  NAMELIST / initial_values / r0 , w0 , log10_mfr , mfr0 , tp0 ,                &
        initial_neutral_density , water_mass_fraction0 , vent_height , ds0 ,     &
        n_part , n_gas , distribution , distribution_variable , n_mom
  
@@ -200,6 +201,7 @@ CONTAINS
     R0 = -1.D0 
     W0 = -1.D0
     Log10_mfr = -1.D0
+    mfr0 = -1.D0
        
     
     n_unit = 10
@@ -1022,6 +1024,23 @@ CONTAINS
 
     WRITE(bak_unit, initial_values)
 
+
+    IF ( mfr0 .GT. 0.D0 ) THEN
+
+       IF ( log10_mfr .GT. 0.D0 ) THEN
+
+          WRITE(*,*) 'WARNING: only one of these parameters can be assigned in'
+          WRITE(*,*) 'the input file: log10_mfr,mfr0',log10_mfr,mfr0
+          STOP
+
+       ELSE
+
+          log10_mfr = log10(mfr0)
+
+       END IF
+
+    END IF
+    
     IF ( ( log10_mfr .LT. 0.d0 ) .AND. ( r0 .EQ. 0.d0 ) .AND. ( w0 .GT. 0.D0 ) ) THEN
        
        WRITE(*,*) 'WARNING: initial radius calculated from MER and velocity'
