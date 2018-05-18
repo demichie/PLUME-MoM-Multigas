@@ -2,8 +2,8 @@ hysplit_dir = "/home/federica/hysplit/trunk"
 plumemom_dir = "/home/federica/Scrivania/PLUME-MoM/PLUME-MoM-Multigas"
 runname = 'etna_test'
 starttime="15 12 03 10 00" # Year,month,day,hour,minute
-endemittime = "15 12 03 14 30"
-endruntime = "15 12 03 17 00"
+endemittime = "15 12 03 12 00"
+endruntime = "15 12 03 14 00"
 deltat_plumemom = 3600  # seconds
 
 lat = 37.73   # center latitude of the grid
@@ -30,8 +30,17 @@ cpvolcgas = [844, 640]
 volcgas_mol_wt = [0.044, 0.064]
 volcgas_mass_fraction = [0.01, 0.01]
 
-#initial water mass fraction
+#initial volcanic water mass fraction
 water_mass_fraction0 = 0.03
+
+#flag for water condensation - freezing - addition of external liquid water at the vent
+water_flag = 'F'
+
+#external water parametes
+rho_lw =  1000.0
+rho_ice =  920.0
+added_water_temp =  273.0
+added_water_mass_fraction =  0.1
 
 # hysplit parameters
 deltaz_release = 200.0
@@ -42,10 +51,10 @@ kmsl=1  	# starting heights default to AGL=0 or MSL=1
 ninit=1  	# particle initialization(0-none; 1-once; 2-add; 3-replace)
 ndump=1  	# dump particles to/from file 0-none or nhrs-output intervall
 ncycl=1 	# pardump output cycle time
-numpar = 1000 	# number of puffs or particles to released per cycle
-maxpar = 30000  # maximum number of particles carried in simulation
+numpar = 100000	# number of puffs or particles to released per cycle
+maxpar = 1000000 # maximum number of particles carried in simulation
 initd = 3 	# initial distribution, particle, puff, or combination.  0 = 3D particle (DEFAULT); 1 = Gh-THv; 2 = THh-THv; 3 = Gh-Pv; 4 = THh-Pv
-delt = 10 	# hysplit integration step (minutes)
+delt = 60 	# hysplit integration step (minutes)
 pinpf = ''
 kmixd = 0       # flag for boundary layer depth. Default value, see HYSPLIT used guide
 kmix0 = 250     # minimum mixing depth. Default value, see HYSPLIT used guide

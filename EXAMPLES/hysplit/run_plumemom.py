@@ -84,6 +84,23 @@ else:
 
 filedata = filedata.replace("{water_mass_fraction0}", str(water_mass_fraction0) )
 
+if water_flag == str(True):
+
+    filedata = filedata.replace("{water_flag}", 'T' )
+    filedata = filedata.replace("{rho_lw}", str(rho_lw) )
+    filedata = filedata.replace("{rho_ice}", str(rho_ice) )
+    filedata = filedata.replace("{added_water_temp}", str(added_water_temp) )
+    filedata = filedata.replace("{added_water_mass_fraction}", str(added_water_mass_fraction) )
+
+else:
+
+    filedata = filedata.replace("{water_flag}", 'F' )
+    filedata = filedata.replace("{rho_lw}", str(rho_lw) )
+    filedata = filedata.replace("{rho_ice}", str(rho_ice) )
+    filedata = filedata.replace("{added_water_temp}", str(added_water_temp) )
+    filedata = filedata.replace("{added_water_mass_fraction}", str(0) )
+     
+
 f = open('plume_model.temp1','w')
 f.write(filedata)
 
