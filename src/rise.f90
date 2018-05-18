@@ -454,6 +454,11 @@ CONTAINS
        END IF
        
     END DO main_loop
+
+    WRITE(*,*)
+    WRITE(*,*) '---------- MODEL RESULTS ----------'
+    WRITE(*,*)
+
     
     max_idx = idx
 

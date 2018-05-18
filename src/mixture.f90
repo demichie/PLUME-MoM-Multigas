@@ -261,7 +261,7 @@ CONTAINS
          + water_vapor_mass_fraction * ( h_wv0 + c_wv * ( tp0 - T_ref ) )       &
          + volcgas_mix_mass_fraction * cpvolcgas_mix * tp0
 
-    !WRITE(*,*) 'enth_at_vent',enth_at_vent
+    WRITE(*,*) 'Original specific enthalpy at vent =',enth_at_vent
 
     !------ Corrections of mass fractions and moments for the added water -------
     erupted_mass_fraction = 1.D0 - added_water_mass_fraction
@@ -373,20 +373,21 @@ CONTAINS
 
     IF ( added_water_mass_fraction .GT. 0.D0 ) THEN
 
-       WRITE(*,*) '--- WATER ADDED AT THE VENT ---'
-       WRITE(*,*) 'Mixture enthalpy', mixt_enth
-       WRITE(*,*) 'check_enth', check_enth
-       WRITE(*,*) 'tp0,tp',tp0,tp
-       WRITE(*,*) 'solid_tot_mass_fraction',solid_tot_mass_fraction
-       WRITE(*,*) 'water_mass_fraction', water_mass_fraction
-       WRITE(*,*) 'volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
-       WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
-       WRITE(*,*) 'water_vapor_mass_fraction', water_vapor_mass_fraction
-       WRITE(*,*) 'liquid_water_mass_fraction', liquid_water_mass_fraction
-       WRITE(*,*) 'ice_mass_fraction', ice_mass_fraction
-       WRITE(*,*) 'gas_mass_fraction', gas_mass_fraction
-       WRITE(*,*) 'vent_water',( water_mass_fraction-added_water_mass_fraction ) / &
-            erupted_mass_fraction
+       WRITE(*,*) 'WARNING: WATER ADDED AT THE VENT'
+       WRITE(*,*) 'New mixture enthalpy =', mixt_enth
+       ! WRITE(*,*) 'check_enth', check_enth
+       ! WRITE(*,*) 'tp0,tp',tp0,tp
+       WRITE(*,*) 'New mixture temperature =',tp
+       WRITE(*,*) 'New solid mass fraction =',solid_tot_mass_fraction
+       WRITE(*,*) 'New water mass fraction =', water_mass_fraction
+       WRITE(*,*) 'New volcgas mix mass fraction =', volcgas_mix_mass_fraction
+       ! WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
+       WRITE(*,*) 'New water vapor mass fraction =', water_vapor_mass_fraction
+       WRITE(*,*) 'New liquid water mass fraction =', liquid_water_mass_fraction
+       ! WRITE(*,*) 'ice_mass_fraction', ice_mass_fraction
+       WRITE(*,*) 'New gas mass fraction =', gas_mass_fraction
+       ! WRITE(*,*) 'vent_water',( water_mass_fraction-added_water_mass_fraction ) / &
+       !      erupted_mass_fraction
        WRITE(*,*)
        
        
