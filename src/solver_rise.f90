@@ -574,8 +574,7 @@ CONTAINS
     mag_u = SQRT( u*u + w*w ) 
     
     phi = ATAN(w/u)
-
-    
+ 
     z = f_(5)
     x = f_(6)
     y = f_(7)
@@ -592,25 +591,26 @@ CONTAINS
 
     ! Properties of the mixture of volcanic gases (H2O excluded)
     IF ( n_gas .GT. 0 ) THEN
-
-       DO i_gas = 1,n_gas
        
+       DO i_gas = 1,n_gas
+          
           rvolcgas_mix = rvolcgas_mix + volcgas_mass_fraction(i_gas)            &
                * rvolcgas(i_gas)
-       
+          
           cpvolcgas_mix = cpvolcgas_mix + volcgas_mass_fraction(i_gas)          &
                * cpvolcgas(i_gas)
-        END DO
-        rvolcgas_mix = rvolcgas_mix / SUM(volcgas_mass_fraction(1:n_gas)) 
-        cpvolcgas_mix = cpvolcgas_mix / SUM(volcgas_mass_fraction(1:n_gas)) 
-        
-        IF ( verbose_level .GE. 1 ) THEN
-           
-           WRITE(*,*) 'rvolcgas_mix :', rvolcgas_mix
-           WRITE(*,*) 'cpvolcgas_mix :', cpvolcgas_mix
-           
-        END IF
-
+       END DO
+       
+       rvolcgas_mix = rvolcgas_mix / SUM(volcgas_mass_fraction(1:n_gas)) 
+       cpvolcgas_mix = cpvolcgas_mix / SUM(volcgas_mass_fraction(1:n_gas)) 
+       
+       IF ( verbose_level .GE. 1 ) THEN
+          
+          WRITE(*,*) 'rvolcgas_mix :', rvolcgas_mix
+          WRITE(*,*) 'cpvolcgas_mix :', cpvolcgas_mix
+          
+       END IF
+       
     ELSE
         
        rvolcgas_mix = 0.D0 
@@ -712,6 +712,9 @@ CONTAINS
 
     END IF 
 
+    !WRITE(*,*) 'rho_solid_avg',rho_solid_avg
+    !WRITE(*,*) 'cpsolid',cpsolid
+    
 
     enth =  f_(4) / f_(1) - gi * z - 0.5D0 * mag_u**2 
 
@@ -742,9 +745,17 @@ CONTAINS
     rho_gas = pa / ( rgasmix * tp )
 
     ! density of mixture of other volcanic gases (no H2O)
-    rhovolcgas_mix = pa / ( rvolcgas_mix * tp )
+    IF ( n_gas .GT. 0 ) THEN
 
-    IF ( verbose_level .GE. 2 ) THEN
+       rhovolcgas_mix = pa / ( rvolcgas_mix * tp )
+
+    ELSE
+
+       rhovolcgas_mix = 0.D0
+
+    END IF
+       
+    IF ( verbose_level .GE. 1 ) THEN
 
        WRITE(*,*) '************** UNLUMP ***************'
        WRITE(*,*) 'pa,tp',pa,tp
@@ -756,35 +767,42 @@ CONTAINS
 
     alfa_s_u_r2(1:n_part) = rhoB_solid_U_r2(1:n_part) / rho_solid_avg(1:n_part)
 
+    !WRITE(*,*) 'rhoB_solid_U_r2(1:n_part)',rhoB_solid_U_r2(1:n_part)
+    !WRITE(*,*) 'rho_solid_avg(1:n_part)',rho_solid_avg(1:n_part)
+    !WRITE(*,*) 'alfa_s_u_r2(1:n_part)',alfa_s_u_r2(1:n_part)
+    
     rhoB_solid_tot_u_r2 = SUM( rhoB_solid_U_r2(1:n_part) )
 
     alfa_g_u_r2 = ( f_(1) * ( 1.D0 - liquid_water_mass_fraction - ice_mass_fraction ) -             &
          rhoB_solid_tot_U_r2 ) / rho_gas 
 
+    !WRITE(*,*) 'f_(1)-rhoB_solid_tot_U_r2',f_(1)-rhoB_solid_tot_U_r2
+    
+    !WRITE(*,*) 'alfa_g_u_r2',alfa_g_u_r2
+    
     alfa_lw_u_r2 = f_(1) * liquid_water_mass_fraction / rho_lw
 
+    !WRITE(*,*) 'alfa_lw_u_r2',alfa_lw_u_r2
+    
     alfa_ice_u_r2 = f_(1) * ice_mass_fraction / rho_ice
 
+    !WRITE(*,*) 'alfa_ice_u_r2',alfa_ice_u_r2
+    
     u_r2 = SUM( alfa_s_u_r2(1:n_part) ) + alfa_g_u_r2 + alfa_lw_u_r2 + alfa_ice_u_r2
 
     r = DSQRT( u_r2 / mag_u )
 
     rho_mix = f_(1) / u_r2 
 
-    IF ( verbose_level .GE. 2 ) THEN
+    IF ( verbose_level .GE. 1 ) THEN
 
-       IF ( liquid_water_mass_fraction .GT. 0.d0 ) THEN
-          
-          WRITE(*,*) '*********** SUM(alfa_s(1:n_part))' ,                      &
-               SUM(alfa_s_u_r2(1:n_part))/u_r2
-          WRITE(*,*) ' alfa_g', alfa_g_u_r2/ u_r2
-          WRITE(*,*) ' alfa_lw', alfa_lw_u_r2/ u_r2
-          WRITE(*,*) ( alfa_lw_u_r2 + alfa_ice_u_r2 + alfa_g_u_r2 + SUM(alfa_s_u_r2(1:n_part)) )&
-               / u_r2
-          
-       END IF
-
-
+       WRITE(*,*) '*********** SUM(alfa_s(1:n_part))' ,                      &
+            SUM(alfa_s_u_r2(1:n_part))/u_r2
+       WRITE(*,*) ' alfa_g', alfa_g_u_r2/ u_r2
+       WRITE(*,*) ' alfa_lw', alfa_lw_u_r2/ u_r2
+       WRITE(*,*) ( alfa_lw_u_r2 + alfa_ice_u_r2 + alfa_g_u_r2 + SUM(alfa_s_u_r2(1:n_part)) )&
+            / u_r2
+       
        WRITE(*,*) 'rho_gas',rho_gas
        WRITE(*,*) '*********** SUM(alfa_s_u_r2(1:n_part))' ,                    &
             SUM(alfa_s_u_r2(1:n_part))

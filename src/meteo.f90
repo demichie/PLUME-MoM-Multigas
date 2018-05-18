@@ -333,7 +333,7 @@ CONTAINS
 
        es = DEXP( 21.4D0 - ( 5351.D0 / ta) )
 
-       sphu_atm = rh * ( 0.622D0 * es ) / ( pa / 100.D0 )
+       sphu_atm = MIN( 1.D0 , rh * ( 0.622D0 * es ) / ( pa / 100.D0 ) )
 
        !WRITE(*,*) 'z,ta,pa',z,ta,pa
        !WRITE(*,*) 'es',100.D0*es

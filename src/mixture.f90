@@ -368,37 +368,8 @@ CONTAINS
 
     ! The new temperature and the partitioning of water is computed
     
-     ! -- TRY CASE1: for tp >= T_ref: only water vapour and liquid water -----
-     CALL eval_temp_wv_lw(mixt_enth,pa,cpsolid)
+     CALL eval_temp(mixt_enth,pa,cpsolid)
       
-     ! --- TRY CASE2: for T_ref - 40 < tp < T_ref: water vapour, liquid water -----
-     ! --- and ice ------------------------------------------------------------ 
-
-     SEARCH_TEMP: IF ( ( tp .GT. (T_ref-40) ) .AND. ( tp .LT. T_ref) .AND. ( liquid_water_mass_fraction .GT. 0.D0 ) ) THEN
-
-         CALL eval_temp_wv_lw_ice(mixt_enth,pa,cpsolid)
-
-         liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-               - ice_mass_fraction
-
-         ! --- for exit status = 1: no equilibrium between vapour - liquid ---- 
-         ! --- and ice, skip to CASE 3 (vapour and ice) -----------------------
- 
-         IF (exit_status .EQ. 1.D0) CALL eval_temp_wv_ice(mixt_enth,pa,cpsolid)
-
-        ! --- TRY CASE3: for tp < T_ref - 40: water vapour and ice -------------------
-           
-     ELSEIF ( tp .LT. (T_ref - 40.D0) ) THEN
-
-         CALL eval_temp_wv_ice(mixt_enth,pa,cpsolid)
-        
-         liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-         - ice_mass_fraction
-
-
-     END IF SEARCH_TEMP
- 
-
 
     ! Compute the specific enthalpy with the new temperature and the corrected
     ! mass fractions
@@ -613,8 +584,6 @@ CONTAINS
 
             CALL eval_temp_wv_lw_ice(enth,pa,cpsolid)
 
-            liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-               - ice_mass_fraction
 
             ! --- for exit status = 1: no equilibrium between vapour - liquid ---- 
             ! --- and ice, skip to CASE 3 (vapour and ice) -----------------------
@@ -626,10 +595,6 @@ CONTAINS
         ELSEIF ( tp .LT. (T_ref - 40.D0) ) THEN
 
             CALL eval_temp_wv_ice(enth,pa,cpsolid)
-        
-            liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-            - ice_mass_fraction
-
 
         END IF SEARCH_TEMP
  
@@ -640,6 +605,9 @@ CONTAINS
         CALL eval_temp_no_water(enth,pa,cpsolid)
 
     END IF
+
+    liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+         - ice_mass_fraction
 
     
   END SUBROUTINE eval_temp
