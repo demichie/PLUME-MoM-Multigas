@@ -579,7 +579,70 @@ CONTAINS
     RETURN
   END SUBROUTINE initialize_mixture
 
+  SUBROUTINE eval_temp(enth,pa,cpsolid)
 
+    USE meteo_module, ONLY : T_ref
+    
+    USE variables, ONLY : verbose_level , water_flag
+
+    
+    IMPLICIT none
+
+    !> mixture enthalpy
+    REAL*8, INTENT(IN) :: enth
+
+    !> pressure in Pa
+    REAL*8, INTENT(IN) :: pa
+
+    REAL*8, INTENT(IN) :: cpsolid
+
+    
+    IF (water_flag) THEN 
+
+        ! --- CASE1: for tp >= T_ref: only water vapour and liquid water --------  
+
+        CALL eval_temp_wv_lw(enth,pa,cpsolid)
+
+        liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+         - ice_mass_fraction
+
+        ! --- CASE2: for T_ref - 40 < tp < T_ref: water vapour, liquid water -----
+        ! --- and ice ------------------------------------------------------------ 
+
+        SEARCH_TEMP: IF ( ( tp .GT. (T_ref-40) ) .AND. ( tp .LT. T_ref) .AND. ( liquid_water_mass_fraction .GT. 0.D0 ) ) THEN
+
+            CALL eval_temp_wv_lw_ice(enth,pa,cpsolid)
+
+            liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+               - ice_mass_fraction
+
+            ! --- for exit status = 1: no equilibrium between vapour - liquid ---- 
+            ! --- and ice, skip to CASE 3 (vapour and ice) -----------------------
+ 
+            IF (exit_status .EQ. 1.D0) CALL eval_temp_wv_ice(enth,pa,cpsolid)
+
+        ! --- CASE3: for tp < T_ref - 40: water vapour and ice -------------------
+           
+        ELSEIF ( tp .LT. (T_ref - 40.D0) ) THEN
+
+            CALL eval_temp_wv_ice(enth,pa,cpsolid)
+        
+            liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+            - ice_mass_fraction
+
+
+        END IF SEARCH_TEMP
+ 
+    ELSE
+    
+        ! --- Evaluate tp for water_flag = false: only water vapour ----------------
+
+        CALL eval_temp_no_water(enth,pa,cpsolid)
+
+    END IF
+
+    
+  END SUBROUTINE eval_temp
 
   SUBROUTINE eval_temp_wv_lw(enth,pres,cpsolid)
 
@@ -1081,7 +1144,11 @@ CONTAINS
     f2 = enth - enth2
 
 
-    IF ((f0 .LT. 0.D0) .AND. (f2 .LT. 0.D0)) THEN
+    !WRITE(*,*) 'f0,f2',f0,f2
+    !READ(*,*)
+    
+    
+    IF ((f0*f2 .GT. 0.D0)) THEN
     
         exit_status = 1.0
 
@@ -1173,7 +1240,7 @@ CONTAINS
              liquid_water_mass_fraction = lw_mf1
              tp = temp1
 
-             ! WRITE(*,*) 'CHECK: tp <= 273.15',' tp:',tp
+             !WRITE(*,*) 'CHECK: tp <= 273.15',' tp:',tp
 
 
              RETURN

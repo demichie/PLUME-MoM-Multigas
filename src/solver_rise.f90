@@ -484,8 +484,8 @@ CONTAINS
   
   SUBROUTINE unlump(f_)
 
-    USE meteo_module, ONLY: u_atm , rair , pa , cpair , rwv , rho_atm , T_ref
-
+    USE meteo_module, ONLY: u_atm , rair , pa , cpair , rwv , rho_atm
+    
     USE mixture_module, ONLY: rho_gas , rgasmix , rho_mix , tp ,                &
          gas_volume_fraction , solid_tot_volume_fraction , gas_mass_fraction ,  &
          atm_mass_fraction , rhovolcgas_mix , rvolcgas_mix ,                    &
@@ -504,13 +504,12 @@ CONTAINS
 
     USE moments_module, ONLY: n_nodes 
 
-    USE variables, ONLY : gi , pi_g , verbose_level , water_flag
+    USE variables, ONLY : gi , pi_g , verbose_level
 
     USE meteo_module, ONLY : zmet
 
-    USE mixture_module, ONLY : eval_temp_wv_lw, eval_temp_wv_ice,               &
-        eval_temp_wv_lw_ice , eval_temp_no_water 
-
+    USE mixture_module, ONLY : eval_temp
+    
     USE moments_module, ONLY : moments_correction_wright
     USE moments_module, ONLY : moments_correction, wheeler_algorithm 
  
@@ -719,55 +718,13 @@ CONTAINS
     
     ! --- Compute  water_vapor_mass_fraction, ice_mass_fraction -----------------
     ! --- and tp from other variables -------------------------------------------
+    CALL eval_temp(enth,pa,cpsolid)
 
-       
-    IF (water_flag) THEN 
-
-        ! --- CASE1: for tp >= T_ref: only water vapour and liquid water --------  
-
-        CALL eval_temp_wv_lw(enth,pa,cpsolid)
-
-        liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-         - ice_mass_fraction
-
-        ! --- CASE2: for T_ref - 40 < tp < T_ref: water vapour, liquid water -----
-        ! --- and ice ------------------------------------------------------------ 
-
-        SEARCH_TEMP: IF ( ( tp .GT. (T_ref-40) ) .AND. ( tp .LT. T_ref) .AND. ( liquid_water_mass_fraction .GT. 0.D0 ) ) THEN
-
-            CALL eval_temp_wv_lw_ice(enth,pa,cpsolid)
-
-            liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-               - ice_mass_fraction
-
-            ! --- for exit status = 1: no equilibrium between vapour - liquid ---- 
-            ! --- and ice, skip to CASE 3 (vapour and ice) -----------------------
- 
-            IF (exit_status .EQ. 1.D0) CALL eval_temp_wv_ice(enth,pa,cpsolid)
-
-        ! --- CASE3: for tp < T_ref - 40: water vapour and ice -------------------
-           
-        ELSEIF ( tp .LT. (T_ref - 40.D0) ) THEN
-
-            CALL eval_temp_wv_ice(enth,pa,cpsolid)
-        
-            liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-            - ice_mass_fraction
-
-
-        END IF SEARCH_TEMP
- 
-    ELSE
-    
-        ! --- Evaluate tp for water_flag = false: only water vapour ----------------
-
-        CALL eval_temp_no_water(enth,pa,cpsolid)
-
-    END IF
+    !WRITE(*,*) 'SOLVER_RISE: tp',tp
     
     ! mass fraction of liquid water in the mixture    
-    !liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-    !     - ice_mass_fraction
+    liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
+         - ice_mass_fraction
 
     !WRITE(*,*) '% liquid_water_mass_fraction',liquid_water_mass_fraction/water_mass_fraction 
     !WRITE(*,*) '% water_vapour_mass_fraction',water_vapor_mass_fraction/water_mass_fraction 
