@@ -498,6 +498,16 @@ CONTAINS
     IF (water_flag) THEN
 
        READ(inp_unit, water_parameters)
+
+       IF ( ( added_water_mass_fraction .LT. 0.D0 ) .OR.                        &
+            ( added_water_mass_fraction .GE. 1.D0 ) ) THEN
+
+          WRITE(*,*) 'added_water_mass_fraction should be >=0 and <1'
+          WRITE(*,*) 'actual value:',added_water_mass_fraction
+          STOP
+
+       END IF
+          
        WRITE(bak_unit, water_parameters)
 
     ELSE

@@ -382,23 +382,27 @@ CONTAINS
 
     gas_mass_fraction = volcgas_mix_mass_fraction + water_vapor_mass_fraction
 
+    IF ( added_water_mass_fraction .GT. 0.D0 ) THEN
 
-    !WRITE(*,*) 'mixt_enth', mixt_enth
-    !WRITE(*,*) 'check_enth', check_enth
-    !WRITE(*,*) 'tp0,tp',tp0,tp
-    !WRITE(*,*) 'solid_tot_mass_fraction',solid_tot_mass_fraction
-    !WRITE(*,*) 'water_mass_fraction', water_mass_fraction
-    !WRITE(*,*) 'volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
-    !WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
-    !WRITE(*,*) 'water_vapor_mass_fraction', water_vapor_mass_fraction
-    !WRITE(*,*) 'liquid_water_mass_fraction', liquid_water_mass_fraction
-    !WRITE(*,*) 'ice_mass_fraction', ice_mass_fraction
-    !WRITE(*,*) 'gas_mass_fraction', gas_mass_fraction
-    !WRITE(*,*) 'vent_water',( water_mass_fraction-added_water_mass_fraction ) / &
-    !     erupted_mass_fraction
-
-    !READ(*,*)
-
+       WRITE(*,*) '--- WATER ADDED AT THE VENT ---'
+       WRITE(*,*) 'Mixture enthalpy', mixt_enth
+       WRITE(*,*) 'check_enth', check_enth
+       WRITE(*,*) 'tp0,tp',tp0,tp
+       WRITE(*,*) 'solid_tot_mass_fraction',solid_tot_mass_fraction
+       WRITE(*,*) 'water_mass_fraction', water_mass_fraction
+       WRITE(*,*) 'volcgas_mix_mass_fraction', volcgas_mix_mass_fraction
+       WRITE(*,*) 'dry_air_mass_fraction', dry_air_mass_fraction
+       WRITE(*,*) 'water_vapor_mass_fraction', water_vapor_mass_fraction
+       WRITE(*,*) 'liquid_water_mass_fraction', liquid_water_mass_fraction
+       WRITE(*,*) 'ice_mass_fraction', ice_mass_fraction
+       WRITE(*,*) 'gas_mass_fraction', gas_mass_fraction
+       WRITE(*,*) 'vent_water',( water_mass_fraction-added_water_mass_fraction ) / &
+            erupted_mass_fraction
+       WRITE(*,*)
+       
+       
+    END IF
+       
     !--- With the new temperature compute the densities of the gas components ---
 
     ! Compute density of gas species and mixture of gas species
