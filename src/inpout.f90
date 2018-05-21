@@ -29,7 +29,7 @@ MODULE inpout
 
     USE solver_module, ONLY: ds0
 
-    USE mixture_module, ONLY: tp0 , water_mass_fraction0 , initial_neutral_density
+    USE mixture_module, ONLY: tp0 , water_mass_fraction0, initial_neutral_density
 
     USE mixture_module, ONLY: n_gas , rvolcgas , cpvolcgas , rvolcgas_mix ,     &
          volcgas_mass_fraction , volcgas_mix_mass_fraction , cpvolcgas_mix ,    &
@@ -202,7 +202,12 @@ CONTAINS
     W0 = -1.D0
     Log10_mfr = -1.D0
     mfr0 = -1.D0
-       
+      
+    rho_lw = -1.D0
+    rho_ice = -1.D0
+    added_water_temp = -1.D0
+    added_water_mass_fraction = -1.D0
+ 
     
     n_unit = 10
 
@@ -353,9 +358,9 @@ CONTAINS
 
     USE moments_module, ONLY : n_nodes
 
-    USE mixture_module, ONLY: water_volume_fraction0 , rgasmix , gas_mass_fraction, &
-         water_vapor_mass_fraction , liquid_water_mass_fraction , gas_volume_fraction, &
-         ice_mass_fraction
+    USE mixture_module, ONLY: water_volume_fraction0 , rgasmix ,                &
+         gas_mass_fraction, water_vapor_mass_fraction ,                         &
+         liquid_water_mass_fraction , gas_volume_fraction, ice_mass_fraction
 
     ! External procedures
 
@@ -363,7 +368,8 @@ CONTAINS
 
     USE meteo_module, ONLY : h_levels
 
-    USE meteo_module, ONLY : rho_atm_month_lat , pres_atm_month_lat ,  temp_atm_month_lat
+    USE meteo_module, ONLY : rho_atm_month_lat , pres_atm_month_lat ,           &
+         temp_atm_month_lat
 
     ! USE mixture_module, ONLY : eval_wv
 
@@ -465,19 +471,25 @@ CONTAINS
     OPEN(inp_unit,FILE=inp_file,STATUS='old')
 
 
-    READ(inp_unit, control_parameters)
+    READ(inp_unit, control_parameters,IOSTAT=io)
 
-    n_unit = n_unit + 1
-    bak_unit = n_unit
-    bak_file = TRIM(run_name)//'.bak'
+    IF ( io .EQ. 0 ) THEN
 
-    OPEN(bak_unit,file=bak_file,status='unknown')
-
-
-    WRITE(bak_unit, control_parameters)
+       n_unit = n_unit + 1
+       bak_unit = n_unit
+       bak_file = TRIM(run_name)//'.bak'
+       
+       OPEN(bak_unit,file=bak_file,status='unknown')
+       WRITE(bak_unit, control_parameters)
     
-    
-    IF ( verbose_level .GE. 1 ) WRITE(*,*) 'read control_parameters: done'
+       IF ( verbose_level .GE. 1 ) WRITE(*,*) 'read control_parameters: done'
+
+    ELSE
+
+       WRITE(*,*) 'Problem with namelist CONTROL_PARAMETERS'
+       STOP
+       
+    END IF
 
     IF ( inversion_flag ) THEN
 
@@ -499,18 +511,63 @@ CONTAINS
 
     IF (water_flag) THEN
 
-       READ(inp_unit, water_parameters)
+       READ(inp_unit, water_parameters,IOSTAT=io)
 
-       IF ( ( added_water_mass_fraction .LT. 0.D0 ) .OR.                        &
-            ( added_water_mass_fraction .GE. 1.D0 ) ) THEN
+       IF ( io .EQ. 0 ) THEN
 
-          WRITE(*,*) 'added_water_mass_fraction should be >=0 and <1'
-          WRITE(*,*) 'actual value:',added_water_mass_fraction
-          STOP
+          IF ( added_water_mass_fraction .EQ. -1.D0 ) THEN
+             
+             WRITE(*,*) 'Namelist WATER_PARAMETERS'
+             WRITE(*,*) 'Plase define ADDED_WATER_MASS_FRACTION'
+             STOP
+
+          ELSE
+
+             IF ( ( added_water_mass_fraction .LT. 0.D0 ) .OR.                  &
+                  ( added_water_mass_fraction .GE. 1.D0 ) ) THEN
+             
+                WRITE(*,*) 'Namelist WATER_PARAMETERS'
+                WRITE(*,*) 'added_water_mass_fraction should be >=0 and <1'
+                WRITE(*,*) 'actual value:',added_water_mass_fraction
+                STOP
+                
+             END IF
+
+          END IF
+
+          IF ( added_water_temp .EQ. -1.D0 ) THEN
+
+             WRITE(*,*) 'Namelist WATER_PARAMETERS'
+             WRITE(*,*) 'Plase specify ADDED_WATER_TEMP (K)' 
+             STOP
+             
+          END IF
+
+        
+          IF ( rho_lw .EQ. -1.D0 ) THEN
+
+             WRITE(*,*) 'Namelist WATER_PARAMETERS'
+             WRITE(*,*) 'Plase define RHO_LW (kg/m3)'
+             STOP
+
+          END IF
+
+          IF ( rho_ice .EQ. -1.D0 ) THEN
+
+             WRITE(*,*) 'Namelist WATER_PARAMETERS'
+             WRITE(*,*) 'Plase define RHO_ICE (kg/m3)'
+             STOP
+             
+          END IF
+  
+          WRITE(bak_unit, water_parameters)
+
+       ELSE
+
+          WRITE(*,*) 'Problem with namelist WATER_PARAMETERS'
+          STOP          
 
        END IF
-          
-       WRITE(bak_unit, water_parameters)
 
     ELSE
        
@@ -873,66 +930,81 @@ CONTAINS
           
           coeff_lat = 1.d0 - ( lat - 0.d0 ) / ( 15.d0 - 0.d0 )
           
-          rho_atm_month_lat(1:n_atm_levels) = coeff_lat * rho_atm_month(1:n_atm_levels,2) &
-               + ( 1.d0 - coeff_lat ) * rho_atm_month(1:n_atm_levels,3)
+          rho_atm_month_lat(1:n_atm_levels) = coeff_lat *                       &
+               rho_atm_month(1:n_atm_levels,2) + ( 1.d0 - coeff_lat ) *         &
+               rho_atm_month(1:n_atm_levels,3)
 
-          pres_atm_month_lat(1:n_atm_levels) = coeff_lat * pres_atm_month(1:n_atm_levels,2) &
-               + ( 1.d0 - coeff_lat ) * pres_atm_month(1:n_atm_levels,3)
+          pres_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               pres_atm_month(1:n_atm_levels,2) + ( 1.d0 - coeff_lat ) *        &
+               pres_atm_month(1:n_atm_levels,3)
 
-          temp_atm_month_lat(1:n_atm_levels) = coeff_lat * temp_atm_month(1:n_atm_levels,2) &
-               + ( 1.d0 - coeff_lat ) * temp_atm_month(1:n_atm_levels,3)
+          temp_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               temp_atm_month(1:n_atm_levels,2) + ( 1.d0 - coeff_lat ) *        &
+               temp_atm_month(1:n_atm_levels,3)
           
        ELSEIF ( ( lat .GT. 15.d0 ) .AND. ( lat .LE. 30.d0 ) ) THEN
           
           coeff_lat = 1.d0 - ( lat - 15.d0 ) / ( 30.d0 - 15.d0 )
           
-          rho_atm_month_lat(1:n_atm_levels) = coeff_lat * rho_atm_month(1:n_atm_levels,3) &
-               + ( 1.d0 - coeff_lat ) * rho_atm_month(1:n_atm_levels,4)
+          rho_atm_month_lat(1:n_atm_levels) = coeff_lat *                       &
+               rho_atm_month(1:n_atm_levels,3) + ( 1.d0 - coeff_lat ) *         &
+               rho_atm_month(1:n_atm_levels,4)
           
-          pres_atm_month_lat(1:n_atm_levels) = coeff_lat * pres_atm_month(1:n_atm_levels,3) &
-               + ( 1.d0 - coeff_lat ) * pres_atm_month(1:n_atm_levels,5)
+          pres_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               pres_atm_month(1:n_atm_levels,3) + ( 1.d0 - coeff_lat ) *        &
+               pres_atm_month(1:n_atm_levels,5)
           
-          temp_atm_month_lat(1:n_atm_levels) = coeff_lat * temp_atm_month(1:n_atm_levels,3) &
-               + ( 1.d0 - coeff_lat ) * temp_atm_month(1:n_atm_levels,5)
+          temp_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               temp_atm_month(1:n_atm_levels,3) + ( 1.d0 - coeff_lat ) *        &
+               temp_atm_month(1:n_atm_levels,5)
           
        ELSEIF ( ( lat .GT. 30.d0 ) .AND. ( lat .LE. 45.d0 ) ) THEN
           
           coeff_lat = 1.d0 - ( lat - 30.d0 ) / ( 45.d0 - 30.d0 )
           
-          rho_atm_month_lat(1:n_atm_levels) = coeff_lat * rho_atm_month(1:n_atm_levels,4) &
-               + ( 1.d0 - coeff_lat ) * rho_atm_month(1:n_atm_levels,5)
+          rho_atm_month_lat(1:n_atm_levels) = coeff_lat *                       &
+               rho_atm_month(1:n_atm_levels,4) + ( 1.d0 - coeff_lat ) *         &
+               rho_atm_month(1:n_atm_levels,5)
           
-          pres_atm_month_lat(1:n_atm_levels) = coeff_lat * pres_atm_month(1:n_atm_levels,4) &
-               + ( 1.d0 - coeff_lat ) * pres_atm_month(1:n_atm_levels,5)
+          pres_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               pres_atm_month(1:n_atm_levels,4) + ( 1.d0 - coeff_lat ) *        &
+               pres_atm_month(1:n_atm_levels,5)
           
-          temp_atm_month_lat(1:n_atm_levels) = coeff_lat * temp_atm_month(1:n_atm_levels,4) &
-               + ( 1.d0 - coeff_lat ) * temp_atm_month(1:n_atm_levels,5)
+          temp_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               temp_atm_month(1:n_atm_levels,4) + ( 1.d0 - coeff_lat ) *        &
+               temp_atm_month(1:n_atm_levels,5)
           
        ELSEIF ( ( lat .GT. 45.d0 ) .AND. ( lat .LE. 60.d0 ) ) THEN
           
           coeff_lat = 1.d0 - ( lat - 45.d0 ) / ( 60.d0 - 45.d0 )
           
-          rho_atm_month_lat(1:n_atm_levels) = coeff_lat * rho_atm_month(1:n_atm_levels,5) &
-               + ( 1.d0 - coeff_lat ) * rho_atm_month(1:n_atm_levels,6)
+          rho_atm_month_lat(1:n_atm_levels) = coeff_lat *                       &
+               rho_atm_month(1:n_atm_levels,5) + ( 1.d0 - coeff_lat ) *         &
+               rho_atm_month(1:n_atm_levels,6)
           
-          pres_atm_month_lat(1:n_atm_levels) = coeff_lat * pres_atm_month(1:n_atm_levels,5) &
-               + ( 1.d0 - coeff_lat ) * pres_atm_month(1:n_atm_levels,6)
+          pres_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               pres_atm_month(1:n_atm_levels,5) + ( 1.d0 - coeff_lat ) *        &
+               pres_atm_month(1:n_atm_levels,6)
           
-          temp_atm_month_lat(1:n_atm_levels) = coeff_lat * temp_atm_month(1:n_atm_levels,5) &
-               + ( 1.d0 - coeff_lat ) * temp_atm_month(1:n_atm_levels,6)
+          temp_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               temp_atm_month(1:n_atm_levels,5) + ( 1.d0 - coeff_lat ) *        &
+               temp_atm_month(1:n_atm_levels,6)
           
        ELSEIF ( ( lat .GT. 60.d0 ) .AND. ( lat .LE. 75.d0 ) ) THEN
           
           coeff_lat = 1.d0 - ( lat - 60.d0 ) / ( 75.d0 - 60.d0 )
           
-          rho_atm_month_lat(1:n_atm_levels) = coeff_lat * rho_atm_month(1:n_atm_levels,6) &
-               + ( 1.d0 - coeff_lat ) * rho_atm_month(1:n_atm_levels,7)
+          rho_atm_month_lat(1:n_atm_levels) = coeff_lat *                       &
+               rho_atm_month(1:n_atm_levels,6) + ( 1.d0 - coeff_lat ) *         &
+               rho_atm_month(1:n_atm_levels,7)
           
-          pres_atm_month_lat(1:n_atm_levels) = coeff_lat * pres_atm_month(1:n_atm_levels,6) &
-               + ( 1.d0 - coeff_lat ) * pres_atm_month(1:n_atm_levels,7)
+          pres_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               pres_atm_month(1:n_atm_levels,6) + ( 1.d0 - coeff_lat ) *        &
+               pres_atm_month(1:n_atm_levels,7)
           
-          temp_atm_month_lat(1:n_atm_levels) = coeff_lat * temp_atm_month(1:n_atm_levels,6) &
-               + ( 1.d0 - coeff_lat ) * temp_atm_month(1:n_atm_levels,7)
+          temp_atm_month_lat(1:n_atm_levels) = coeff_lat *                      &
+               temp_atm_month(1:n_atm_levels,6) + ( 1.d0 - coeff_lat ) *        &
+               temp_atm_month(1:n_atm_levels,7)
           
        ELSEIF ( ( lat .GT. 75.d0 ) .AND. ( lat .LE. 90.d0 ) ) THEN
           
@@ -952,11 +1024,10 @@ CONTAINS
           
        END IF
        
-       pres_atm_month_lat(1:n_atm_levels) = 100.d0 * pres_atm_month_lat(1:n_atm_levels)
+       pres_atm_month_lat(1:n_atm_levels) =                                     &
+            100.d0 * pres_atm_month_lat(1:n_atm_levels)
 
        h_levels(1:n_atm_levels) = 1000.d0 * temp_atm_month(1:n_atm_levels,1)
-
-	!WRITE(*,*) 'rho_atm_month_lat(1:n_atm_levels)', rho_atm_month_lat(1:n_atm_levels)
 
     ELSEIF ( read_atm_profile .EQ. 'card' ) THEN
 
@@ -1041,15 +1112,21 @@ CONTAINS
 
     END IF
     
-    IF ( ( log10_mfr .LT. 0.d0 ) .AND. ( r0 .EQ. 0.d0 ) .AND. ( w0 .GT. 0.D0 ) ) THEN
+    IF ( ( log10_mfr .LT. 0.d0 ) .AND. ( r0 .EQ. 0.d0 ) .AND.                   &
+         ( w0 .GT. 0.D0 ) ) THEN
        
        WRITE(*,*) 'WARNING: initial radius calculated from MER and velocity'
 
     END IF
 
-    IF ( ( log10_mfr .LT. 0.d0 ) .AND. ( r0 .EQ. 0.d0 ) .AND. ( w0 .EQ. 0.d0 ) ) THEN
+    IF ( ( log10_mfr .LT. 0.d0 ) .AND. ( r0 .EQ. 0.d0 ) .AND.                   &
+         ( w0 .EQ. 0.d0 ) ) THEN
        
-       WRITE(*,*) 'WARNING: initial radius and velocity calculated from MER and gas mass fraction'
+       WRITE(*,*) 'Not enough input parameters assigned in INITIAL_VALUES'
+       WRITE(*,*) 'mfr0',mfr0
+       WRITE(*,*) 'log10_mfr',log10_mfr
+       WRITE(*,*) 'w0',w0
+       WRITE(*,*) 'r0',r0
        STOP
 
     END IF
@@ -1460,13 +1537,6 @@ CONTAINS
 
     END IF
     
-!!$    IF ( ( log10_mfr .GT. 0.d0 ) .AND. ( r0 .GT. 0.d0 ) .AND. ( w0 .EQ. 0.D0 ) ) THEN
-!!$       
-!!$         w0 = ( 10.0**log10_mfr ) / ( pi_g * rho_mix * r0**2 )
-!!$         WRITE(*,*) 'initial velocity',w0
-!!$
-!!$    END IF
-
     DO i_part = 1,n_part
 
        ! the volume fraction of the particle phases ( with respect to the
@@ -1563,7 +1633,7 @@ CONTAINS
           
        END IF
        
-       WRITE(mat_unit,*) 'solid_mass_fractions = [',                               &
+       WRITE(mat_unit,*) 'solid_mass_fractions = [',                            &
             solid_partial_mass_fraction(1:n_part),'];'
        
        WRITE(mat_unit,*) 'd1 = [',diam1(1:n_part),'];'
@@ -1862,7 +1932,7 @@ CONTAINS
 
   END SUBROUTINE read_inp
 
-  !*****************************************************************************
+  !******************************************************************************
   !> \brief Initialize output units
   !
   !> This subroutine set the names of the output files and open the output units
@@ -1937,7 +2007,7 @@ CONTAINS
     
   END SUBROUTINE open_file_units
 
-  !*****************************************************************************
+  !******************************************************************************
   !> \brief Close output units
   !
   !> This subroutine close the output units
