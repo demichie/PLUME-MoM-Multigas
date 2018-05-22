@@ -426,20 +426,6 @@ CONTAINS
 
     END DO
 
-    DO i_part=1,n_part
-
-       DO i_mom=0,n_mom-1
-
-          IF ( fnew(8+i_mom+(i_part-1)*n_mom) .LE. 0.D0 ) THEN
-
-             WRITE(*,*) 'WARNING: negative moment, part',i_part,'mom',i_mom
-                
-          END IF
-
-       ENDDO
-
-    END DO
-
     RETURN
 
   END SUBROUTINE marching
