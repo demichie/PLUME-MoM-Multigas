@@ -544,6 +544,20 @@ CONTAINS
     RETURN
   END SUBROUTINE initialize_mixture
 
+  !******************************************************************************
+  !> \brief Mixture temperature 
+  !
+  !> This function evaluates the mixture temperature from the mixture enthalpy.
+  !> In addition, the partitioning of water in vapour, liquid and ice is 
+  !> computed according to equilibrium conditions.
+  !> \param[in]   enth     mixture enthalpy
+  !> \param[in]   pa       atmospheric pressure
+  !> \param[in]   cpsolid  solid particles specific heat
+  !> \date 21/05/2018
+  !> @authors 
+  !> Federica Pardini, Mattia de' Michieli Vitturi
+  !******************************************************************************
+
   SUBROUTINE eval_temp(enth,pa,cpsolid)
 
     USE meteo_module, ONLY : T_ref
@@ -568,23 +582,24 @@ CONTAINS
 
         CALL eval_temp_wv_lw(enth,pa,cpsolid)
 
-        liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
-         - ice_mass_fraction
+        liquid_water_mass_fraction = water_mass_fraction -                      &
+             water_vapor_mass_fraction - ice_mass_fraction
 
-        ! --- CASE2: for T_ref - 40 < tp < T_ref: water vapour, liquid water -----
-        ! --- and ice ------------------------------------------------------------ 
+        ! --- CASE2: for T_ref - 40 < tp < T_ref: water vapour, liquid water ----
+        ! --- and ice ----------------------------------------------------------- 
 
-        SEARCH_TEMP: IF ( ( tp .GT. (T_ref-40) ) .AND. ( tp .LT. T_ref) .AND. ( liquid_water_mass_fraction .GT. 0.D0 ) ) THEN
+        SEARCH_TEMP: IF ( ( tp .GT. (T_ref-40) ) .AND. ( tp .LT. T_ref) .AND.   &
+             ( liquid_water_mass_fraction .GT. 0.D0 ) ) THEN
 
             CALL eval_temp_wv_lw_ice(enth,pa,cpsolid)
 
 
-            ! --- for exit status = 1: no equilibrium between vapour - liquid ---- 
-            ! --- and ice, skip to CASE 3 (vapour and ice) -----------------------
+            ! --- for exit status = 1: no equilibrium between vapour - liquid --- 
+            ! --- and ice, skip to CASE 3 (vapour and ice) ----------------------
  
             IF (exit_status .EQ. 1.D0) CALL eval_temp_wv_ice(enth,pa,cpsolid)
 
-        ! --- CASE3: for tp < T_ref - 40: water vapour and ice -------------------
+        ! --- CASE3: for tp < T_ref - 40: water vapour and ice ------------------
            
         ELSEIF ( tp .LT. (T_ref - 40.D0) ) THEN
 
@@ -594,7 +609,7 @@ CONTAINS
  
     ELSE
     
-        ! --- Evaluate tp for water_flag = false: only water vapour ----------------
+        ! --- Evaluate tp for water_flag = false: only water vapour -------------
 
         CALL eval_temp_no_water(enth,pa,cpsolid)
 
@@ -603,13 +618,30 @@ CONTAINS
     liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
          - ice_mass_fraction
 
+    RETURN
     
   END SUBROUTINE eval_temp
 
+
+  !******************************************************************************
+  !> \brief Mixture temperature with vapour and liquid water 
+  !
+  !> This function evaluates the mixture temperature from the mixture enthalpy, 
+  !> when water is present only as vapour and liquid (no ice).
+  !> In addition, the partitioning of water in vapour and liquid is computed  
+  !> according to equilibrium conditions.
+  !> \param[in]   enth     mixture enthalpy
+  !> \param[in]   pa       atmospheric pressure
+  !> \param[in]   cpsolid  solid particles specific heat
+  !> \date 21/05/2018
+  !> @authors 
+  !> Federica Pardini, Mattia de' Michieli Vitturi
+  !******************************************************************************
+
   SUBROUTINE eval_temp_wv_lw(enth,pres,cpsolid)
 
-    USE meteo_module, ONLY : cpair , T_ref , h_wv0 , c_wv , c_ice, h_lw0 , c_lw ,       &
-         da_mol_wt , wv_mol_wt
+    USE meteo_module, ONLY : cpair , T_ref , h_wv0 , c_wv , c_ice, h_lw0 ,      &
+         c_lw , da_mol_wt , wv_mol_wt
 
     USE variables, ONLY : water_flag 
 
@@ -940,32 +972,6 @@ CONTAINS
 
   END SUBROUTINE eval_temp_wv_lw
 
-
-
-
-
-  ! ------ Check if temp is compatible with vapour/liquid only mixture
-  !IF ( tp .GT. T_ref ) THEN
-
-
-  !   RETURN
-
-  !ELSE
-
-  !WRITE(*,*) 'water_vapor_mass_fraction',water_vapor_mass_fraction
-  !WRITE(*,*) 'wv_mol_fract',wv_mol_fract
-  !WRITE(*,*) 'liquid_water_mass_fraction',liquid_water_mass_fraction
-  !WRITE(*,*) 'wv_pres',wv_pres
-  !WRITE(*,*) 't0,t1,t2',temp0,temp1,temp2
-  !WRITE(*,*) 'lw_mf0,lw_mf1,lw_mf2',lw_mf0,lw_mf1,lw_mf2
-  !WRITE(*,*) 'f0,f1,f2',f0,f1,f2
-  !WRITE(*,*) '*****'
-  !WRITE(*,*) 'CHECK: tp <= 273.15',' tp:',tp
-  !READ(*,*)
-
-  !END IF
-
-  !WRITE(*,*) 'liquid_water_mass_fraction',liquid_water_mass_fraction
 
 
 
