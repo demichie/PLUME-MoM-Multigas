@@ -705,8 +705,8 @@ CONTAINS
     
     rhoB_solid_tot_u_r2 = SUM( rhoB_solid_U_r2(1:n_part) )
 
-    alfa_g_u_r2 = ( f_(1) * ( 1.D0 - liquid_water_mass_fraction - ice_mass_fraction ) -             &
-         rhoB_solid_tot_U_r2 ) / rho_gas 
+    alfa_g_u_r2 = ( f_(1) * ( 1.D0 - liquid_water_mass_fraction                 &
+         - ice_mass_fraction ) - rhoB_solid_tot_U_r2 ) / rho_gas 
 
     !WRITE(*,*) 'f_(1)-rhoB_solid_tot_U_r2',f_(1)-rhoB_solid_tot_U_r2
     
@@ -720,7 +720,8 @@ CONTAINS
 
     !WRITE(*,*) 'alfa_ice_u_r2',alfa_ice_u_r2
     
-    u_r2 = SUM( alfa_s_u_r2(1:n_part) ) + alfa_g_u_r2 + alfa_lw_u_r2 + alfa_ice_u_r2
+    u_r2 = SUM( alfa_s_u_r2(1:n_part) ) + alfa_g_u_r2 + alfa_lw_u_r2            &
+         + alfa_ice_u_r2
 
     r = DSQRT( u_r2 / mag_u )
 
@@ -728,12 +729,12 @@ CONTAINS
 
     IF ( verbose_level .GE. 1 ) THEN
 
-       WRITE(*,*) '*********** SUM(alfa_s(1:n_part))' ,                      &
+       WRITE(*,*) '*********** SUM(alfa_s(1:n_part))' ,                         &
             SUM(alfa_s_u_r2(1:n_part))/u_r2
        WRITE(*,*) ' alfa_g', alfa_g_u_r2/ u_r2
        WRITE(*,*) ' alfa_lw', alfa_lw_u_r2/ u_r2
-       WRITE(*,*) ( alfa_lw_u_r2 + alfa_ice_u_r2 + alfa_g_u_r2 + SUM(alfa_s_u_r2(1:n_part)) )&
-            / u_r2
+       WRITE(*,*) ( alfa_lw_u_r2 + alfa_ice_u_r2 + alfa_g_u_r2                  &
+            + SUM(alfa_s_u_r2(1:n_part)) ) / u_r2
        
        WRITE(*,*) 'rho_gas',rho_gas
        WRITE(*,*) '*********** SUM(alfa_s_u_r2(1:n_part))' ,                    &
@@ -778,8 +779,8 @@ CONTAINS
     ! --------- gas fractions ---------------------------------------------------
     ! --------- mixture of dry air + water vapor + other volcanic gases ---------
     
-    gas_mass_fraction = ( f_(1)  * ( 1.D0 - liquid_water_mass_fraction - ice_mass_fraction ) -      &
-         rhoB_solid_tot_u_r2 ) / f_(1)
+    gas_mass_fraction = ( f_(1)  * ( 1.D0 - liquid_water_mass_fraction          &
+         - ice_mass_fraction ) - rhoB_solid_tot_u_r2 ) / f_(1)
 
     gas_volume_fraction = 1.D0 - solid_tot_volume_fraction -                    &
          liquid_water_volume_fraction - ice_volume_fraction
@@ -853,7 +854,7 @@ CONTAINS
        WRITE(*,*) 'liquid water volume fraction',liquid_water_volume_fraction
        WRITE(*,*) 'ice volume fraction',ice_volume_fraction
        WRITE(*,*) 'gas volume fraction',gas_volume_fraction
-       WRITE(*,*) 'sum of previous four volume fractions',                     &
+       WRITE(*,*) 'sum of previous four volume fractions',                      &
             solid_tot_volume_fraction + liquid_water_volume_fraction +          &
             gas_volume_fraction + ice_volume_fraction
 
@@ -864,7 +865,7 @@ CONTAINS
        WRITE(*,*) 'liquid water mass fraction',liquid_water_mass_fraction
        WRITE(*,*) 'ice mass fraction',ice_mass_fraction
        WRITE(*,*) 'gas mass fraction',gas_mass_fraction
-       WRITE(*,*) 'sum of previous four mass fractions',                       &
+       WRITE(*,*) 'sum of previous four mass fractions',                        &
             solid_tot_mass_fraction + liquid_water_mass_fraction +              &
             gas_mass_fraction + ice_mass_fraction
 
