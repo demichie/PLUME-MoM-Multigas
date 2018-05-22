@@ -1460,13 +1460,6 @@ CONTAINS
 
     END IF
     
-!!$    IF ( ( log10_mfr .GT. 0.d0 ) .AND. ( r0 .GT. 0.d0 ) .AND. ( w0 .EQ. 0.D0 ) ) THEN
-!!$       
-!!$         w0 = ( 10.0**log10_mfr ) / ( pi_g * rho_mix * r0**2 )
-!!$         WRITE(*,*) 'initial velocity',w0
-!!$
-!!$    END IF
-
     DO i_part = 1,n_part
 
        ! the volume fraction of the particle phases ( with respect to the
@@ -1862,7 +1855,7 @@ CONTAINS
 
   END SUBROUTINE read_inp
 
-  !*****************************************************************************
+  !******************************************************************************
   !> \brief Initialize output units
   !
   !> This subroutine set the names of the output files and open the output units
@@ -1937,7 +1930,7 @@ CONTAINS
     
   END SUBROUTINE open_file_units
 
-  !*****************************************************************************
+  !******************************************************************************
   !> \brief Close output units
   !
   !> This subroutine close the output units
@@ -1969,7 +1962,7 @@ CONTAINS
 
   END SUBROUTINE close_file_units
 
-  !*****************************************************************************
+  !******************************************************************************
   !> \brief Write outputs
   !
   !> This subroutine writes the output values on the output files. The values
