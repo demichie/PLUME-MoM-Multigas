@@ -47,7 +47,7 @@ loading = np.zeros((nblocks,nsampl,npart))
 
 for i in range(nblocks):
     for j in range(nsampl):
-        loading[i,j,:] = Value[i*block_length+(j+1)+nsampl*np.arange(npart)-1]*1000.0
+        loading[i,j,:] = Value[i*block_length+(j+1)+nsampl*np.arange(npart)-1]
 
 
 fig = plt.figure()
@@ -68,7 +68,7 @@ for j in range(nsampl):
 
         c=next(color)
         ax.bar(np.array(diam_phi)+(j-0.5*nsampl)*width, loading[nblocks-1,j,:]/np.sum(loading[nblocks-1,j,:])*100,width,color=c)
-        stringj = "Loc %s (%s,%s), Loading=%.2e [g/m2]" % (str(j+1), str(LAT[j]), str(LON[j]),np.sum(loading[nblocks-1,j,:])*100 )
+        stringj = "Loc %s (%s,%s), Loading=%.2e [kg/m2]" % (str(j+1), str(LAT[j]), str(LON[j]),np.sum(loading[nblocks-1,j,:]) )
         legend_strings.append(stringj)
 
         deposit_file_j = deposit_file+str(j)+'.txt'
