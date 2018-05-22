@@ -61,7 +61,13 @@ color=iter(cm.rainbow(np.linspace(0,1,nsampl)))
 deposit_file = 'sample_deposit'
 
 
+deposit_file_total = deposit_file+'_total.txt'
+ftot = open(deposit_file_total,'wb')
+
+
 for j in range(nsampl):
+
+    ftot.write(str( np.sum(loading[nblocks-1,j,:]) )+'\n')
 
     if ( np.sum(loading[nblocks-1,j,:]) > 0.0 ):
 
@@ -80,6 +86,8 @@ for j in range(nsampl):
 
         f.close()
 
+
+ftot.close()
 
 ax.legend(legend_strings)
 
