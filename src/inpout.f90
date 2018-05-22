@@ -1107,6 +1107,7 @@ CONTAINS
        ELSE
 
           log10_mfr = log10(mfr0)
+          WRITE(*,*) 'LOG10 mass eruption rate =',log10_mfr
 
        END IF
 
