@@ -2381,7 +2381,7 @@ CONTAINS
 
           CALL zmet
           
-          IF ( u_atm .LT. 1.0D-1 ) THEN
+          IF ( u_atm .LT. 1.0D+3 ) THEN
    
              delta_angle = 2.D0*pi_g/n_cloud
           
@@ -2504,7 +2504,7 @@ CONTAINS
        
     ELSE
        
-       IF ( u_atm .LT. 1.0D-1 ) THEN
+       IF ( u_atm .LT. 1.0D+3 ) THEN
           
           delta_angle = 2.D0*pi_g/n_cloud
           
@@ -2595,7 +2595,7 @@ CONTAINS
        
     ELSE
        
-       IF ( u_atm .LT. 1.0D-1 ) THEN
+       IF ( u_atm .LT. 1.0D+3 ) THEN
           
           delta_angle = 2.D0*pi_g/n_cloud
           
@@ -2722,7 +2722,7 @@ CONTAINS
        
     ELSE
        
-       IF ( u_atm .LT. 1.0D-1 ) THEN
+       IF ( u_atm .LT. 1.0D+3 ) THEN
           
           delta_angle = 2.D0*pi_g/n_cloud
           
