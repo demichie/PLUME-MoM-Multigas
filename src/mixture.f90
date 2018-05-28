@@ -482,7 +482,7 @@ CONTAINS
 
        mass_flow_rate = 10.0**log10_mfr
 
-       WRITE(*,*) 'WARNING: Fixed MER =',mass_flow_rate
+       WRITE(*,*) 'Fixed MER [kg/s] =',mass_flow_rate
 
        IF ( r0 .EQ. -1.D0 ) THEN
 

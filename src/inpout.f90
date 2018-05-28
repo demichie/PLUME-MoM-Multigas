@@ -1107,6 +1107,7 @@ CONTAINS
        ELSE
 
           log10_mfr = log10(mfr0)
+          WRITE(*,*) 'LOG10 mass eruption rate =',log10_mfr
 
        END IF
 
@@ -2039,7 +2040,7 @@ CONTAINS
 
   END SUBROUTINE close_file_units
 
-  !*****************************************************************************
+  !******************************************************************************
   !> \brief Write outputs
   !
   !> This subroutine writes the output values on the output files. The values
@@ -2380,7 +2381,7 @@ CONTAINS
 
           CALL zmet
           
-          IF ( u_atm .LT. 1.0D-1 ) THEN
+          IF ( u_atm .LT. 1.0D+3 ) THEN
    
              delta_angle = 2.D0*pi_g/n_cloud
           
@@ -2503,7 +2504,7 @@ CONTAINS
        
     ELSE
        
-       IF ( u_atm .LT. 1.0D-1 ) THEN
+       IF ( u_atm .LT. 1.0D+3 ) THEN
           
           delta_angle = 2.D0*pi_g/n_cloud
           
@@ -2594,7 +2595,7 @@ CONTAINS
        
     ELSE
        
-       IF ( u_atm .LT. 1.0D-1 ) THEN
+       IF ( u_atm .LT. 1.0D+3 ) THEN
           
           delta_angle = 2.D0*pi_g/n_cloud
           
@@ -2721,7 +2722,7 @@ CONTAINS
        
     ELSE
        
-       IF ( u_atm .LT. 1.0D-1 ) THEN
+       IF ( u_atm .LT. 1.0D+3 ) THEN
           
           delta_angle = 2.D0*pi_g/n_cloud
           
