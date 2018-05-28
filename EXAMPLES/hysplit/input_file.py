@@ -28,7 +28,7 @@ ngas = 2   # in addition to H2O
 rvolcgas = [189, 130 ] # CO2 and SO2 R constant [J/kgK]
 cpvolcgas = [844, 640]
 volcgas_mol_wt = [0.044, 0.064]
-volcgas_mass_fraction = [0.01, 0.01]
+volcgas_mass_fraction = [0.05, 0.005]
 
 #initial volcanic water mass fraction
 water_mass_fraction0 = 0.03
@@ -51,10 +51,10 @@ kmsl=1  	# starting heights default to AGL=0 or MSL=1
 ninit=1  	# particle initialization(0-none; 1-once; 2-add; 3-replace)
 ndump=1  	# dump particles to/from file 0-none or nhrs-output intervall
 ncycl=1 	# pardump output cycle time
-numpar = 100000	# number of puffs or particles to released per cycle
-maxpar = 1000000 # maximum number of particles carried in simulation
-initd = 3 	# initial distribution, particle, puff, or combination.  0 = 3D particle (DEFAULT); 1 = Gh-THv; 2 = THh-THv; 3 = Gh-Pv; 4 = THh-Pv
-delt = 60 	# hysplit integration step (minutes)
+numpar = 50000	# number of puffs or particles to released per cycle
+maxpar = 100000 # maximum number of particles carried in simulation
+initd = 0 	# initial distribution, particle, puff, or combination.  0 = 3D particle (DEFAULT); 1 = Gh-THv; 2 = THh-THv; 3 = Gh-Pv; 4 = THh-Pv
+delt = 10 	# hysplit integration step (minutes)
 pinpf = ''
 kmixd = 0       # flag for boundary layer depth. Default value, see HYSPLIT used guide
 kmix0 = 250     # minimum mixing depth. Default value, see HYSPLIT used guide
@@ -65,7 +65,7 @@ kblt = 2        # Vertical Turbulence. Default value, see HYSPLIT used guide
 
 # CONTROL parameters
 #SAMPLING INTERVAL
-SI_TYPE = 1 # Avg:0 Now:1 Max:2
+SI_TYPE = 0 # Avg:0 Now:1 Max:2
 SI_HOUR = 1 # hrs
 SI_MINUTE = 0 # min
 #HEIGHT OF EACH CONCENTRATION LEVEL (m-msl)
@@ -121,14 +121,8 @@ diam_phi = 		 [ 	-3 , 	-2 ,	-1 , 	0 , 	1 , 	2 , 	3 , 	4 , 	5	]
 
 
 #SAMPLING POINTS
-#P01=[-38.97,-67.82]
-#P02=[-38.70,-68.02]
-#P03=[-38.96,-68.04]
-#P04=[-38.96,-68.06]
-#P05=[-38.94,-68.11]
-#P06=[-38.96,-68.05]
-#P07=[-38.95,-68.23]
-#P08=[-39.02,-67.58]
-#P09=[-39.04,-67.57]
+P01=[37.6,15.2]
+P02=[37.6,15.0]
+P03=[37.5,15.2]
 
 
