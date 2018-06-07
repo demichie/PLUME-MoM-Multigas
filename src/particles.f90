@@ -12,9 +12,13 @@ MODULE particles_module
   !
   USE moments_module, ONLY : n_mom , n_nodes
 
+  USE variables, ONLY : aggregation_flag , verbose_level , indent_space , FMT
+
   IMPLICIT NONE
 
   INTEGER :: n_part
+
+  INTEGER :: n_part_org
 
   !> mass fraction of the particle phases with respect to the total solid
   REAL*8, ALLOCATABLE, DIMENSION(:) :: solid_partial_mass_fraction
@@ -53,11 +57,14 @@ MODULE particles_module
   REAL*8, ALLOCATABLE, DIMENSION(:,:) :: set_cp_mom
 
   !> Term accounting for the birth of aggregates in the moments equations
-  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: birth_term
+  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: birth_mom
 
   !> Term accounting for the loss of particles because of aggregation 
-  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: death_term
+  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: death_mom
 
+  !> Term accounting for the mass transfer from non-aggr to aggr 
+  REAL*8, ALLOCATABLE, DIMENSION(:) :: mass_transfer_term
+  
   !> shape factor for settling velocity (Pfeiffer)
   REAL*8 :: shape_factor
 
@@ -98,7 +105,29 @@ MODULE particles_module
   !> Flag for the aggregation:\n
   !> - 'TRUE'   => aggregation enabled
   !> - 'FALSE'  => aggregation disabled
-  LOGICAL :: aggregation_flag
+  LOGICAL, ALLOCATABLE :: aggregation(:)
+
+
+  !> Aggregation kernel model:\n
+  !> - 'constant'   => beta=1
+  !> - 'brownian'
+  !> - 'sum'
+  !> .
+  CHARACTER(LEN=20) :: aggregation_model
+
+  !> Index defining the couple aggregated-non aggregated
+  INTEGER, ALLOCATABLE :: aggr_idx(:)
+
+  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: xi_part
+  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: w_part
+  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: part_dens_array
+  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: part_set_vel_array
+  REAL*8, ALLOCATABLE, DIMENSION(:,:) :: part_cp_array
+
+  REAL*8, ALLOCATABLE, DIMENSION(:,:,:,:) :: part_beta_array 
+
+  REAL*8 :: temp_part
+
 
   SAVE
 
@@ -133,8 +162,9 @@ CONTAINS
     ALLOCATE ( set_cp_mom(1:n_part,0:n_mom-1) )
     ALLOCATE ( cp_rhop_mom(1:n_part,0:n_mom-1) )
     ALLOCATE ( cp_mom(1:n_part,0:n_mom-1) )
-    ALLOCATE ( birth_term(1:n_part,0:n_mom-1) )
-    ALLOCATE ( death_term(1:n_part,0:n_mom-1) )
+    ALLOCATE ( birth_mom(1:n_part,0:n_mom-1) )
+    ALLOCATE ( death_mom(1:n_part,0:n_mom-1) )
+    ALLOCATE ( mass_transfer_term(1:n_part) )
 
     ! Allocation of the parameters for the variable density
     ALLOCATE ( diam1(n_part) )
@@ -144,7 +174,64 @@ CONTAINS
 
     ALLOCATE ( cp_part(n_part) )
 
+    ! Allocation of arrays for aggregation
+    ALLOCATE ( aggregation(n_part) )
+    ALLOCATE ( aggr_idx(n_part) )
+    ALLOCATE ( xi_part(n_part,n_nodes) )
+    ALLOCATE ( w_part(n_part,n_nodes) )
+
+    ALLOCATE ( part_dens_array(n_part,n_nodes) )
+    ALLOCATE ( part_set_vel_array(n_part,n_nodes) )
+    ALLOCATE ( part_cp_array(n_part,n_nodes) )
+    ALLOCATE ( part_beta_array(n_part,n_part,n_nodes,n_nodes) )
+
+
   END SUBROUTINE allocate_particles
+
+  SUBROUTINE deallocate_particles
+
+    IMPLICIT NONE
+
+    DEALLOCATE ( solid_partial_mass_fraction )
+    DEALLOCATE ( solid_partial_volume_fraction )
+    DEALLOCATE ( solid_mass_fraction )
+    DEALLOCATE ( solid_volume_fraction )
+
+    ! Allocation of the arrays for the moments
+    DEALLOCATE ( mom )
+    DEALLOCATE ( set_mom )
+    DEALLOCATE ( rhop_mom )
+    DEALLOCATE ( set_rhop_mom )
+    DEALLOCATE ( set_cp_rhop_mom )
+    DEALLOCATE ( set_cp_mom )
+    DEALLOCATE ( cp_rhop_mom )
+    DEALLOCATE ( cp_mom )
+    DEALLOCATE ( birth_mom )
+    DEALLOCATE ( death_mom )
+    DEALLOCATE ( mass_transfer_term )
+
+    ! Allocation of the parameters for the variable density
+    DEALLOCATE ( diam1 )
+    DEALLOCATE ( rho1 )
+    DEALLOCATE ( diam2 )
+    DEALLOCATE ( rho2 )
+
+    DEALLOCATE ( cp_part )
+
+    ! Allocation of arrays for aggregation
+    DEALLOCATE ( aggregation )
+    DEALLOCATE ( aggr_idx )
+    DEALLOCATE ( xi_part )
+    DEALLOCATE ( w_part )
+
+    DEALLOCATE ( part_dens_array )
+    DEALLOCATE ( part_set_vel_array )
+    DEALLOCATE ( part_cp_array )
+    DEALLOCATE ( part_beta_array )
+
+
+  END SUBROUTINE deallocate_particles
+
 
   !******************************************************************************
   !> \brief Particles variables inizialization
@@ -283,7 +370,7 @@ CONTAINS
     END IF
 
     rhop = particles_density(i_part,diam_in)
-    
+
     IF ( settling_model .EQ. 'textor' ) THEN
 
        ! Textor et al. 2006
@@ -317,27 +404,27 @@ CONTAINS
        Vinit = diam**2 * gi * ( rhop - rho_atm ) / (18.D0*visc_atm)
 
        DO i=1,10
-          
+
           IF (i.EQ.1) REYNOLDS = rho_atm * Vinit * diam / visc_atm
-          
+
           K1 = 3.0/(1.0+2.0*(shape_factor**(-0.5)))
-          
+
           K2 = 10.0**(1.8148*((-1.0*log10(shape_factor))**0.5743))
-          
+
           REYNOLDSK1K2 = REYNOLDS * K1 * K2
-          
+
           CD1 = K2 * 24.0 / REYNOLDSK1K2  *                                     &
                ( 1.D0 + 0.1118 * REYNOLDSK1K2**0.6567 )
-          
+
           CD2 = 0.4305 * K2 / ( 1.0 + 3305.0 / REYNOLDSK1K2 )
-          
+
           CD = CD1 + CD2
-          
+
           VG_GANSER = ( ( 4.0 * gi * diam * ( rhop - rho_atm ) )                &
                / ( 3.D0 * CD * rho_atm) )**0.5
 
           REYNOLDS = rho_atm * VG_GANSER * diam / visc_atm
-          
+
        ENDDO
 
        particles_settling_velocity = Vg_Ganser
@@ -532,9 +619,10 @@ CONTAINS
 
     END IF
 
-    !WRITE(*,*) 'rho1(i_part),rho2(i_part)',rho1(i_part),rho2(i_part)
-    !WRITE(*,*) 'diam,particles_density',diam,particles_density
-    
+    ! WRITE(*,*) 'i_part,diam_in',i_part,diam_in
+    ! WRITE(*,*) 'rho1(i_part),rho2(i_part)',rho1(i_part),rho2(i_part)
+    ! WRITE(*,*) 'diam,particles_density',diam,particles_density
+
     RETURN
 
   END FUNCTION particles_density
@@ -544,7 +632,8 @@ CONTAINS
   !
   !> This function evaluates the aggregation kernel using a Brownian formulation
   !> given in Marchisio et al., 2003.
-  !> \param[in]   i_part   particle phase index 
+  !> \param[in]   i_part   particle family index 
+  !> \param[in]   j_part   particle family index 
   !> \param[in]   diam_i   first particle diameter (m or phi)
   !> \param[in]   diam_j   second particle diameter (m or phi) 
   !> \date 05/05/2015
@@ -552,32 +641,57 @@ CONTAINS
   !> Mattia de' Michieli Vitturi
   !******************************************************************************
 
-  FUNCTION particles_beta(diam_i,diam_j)
+  FUNCTION particles_beta(i_part,j_part,diam_i,diam_j)
     !
     IMPLICIT NONE
 
     REAL*8 :: particles_beta
 
+    INTEGER, INTENT(IN) :: i_part
+    INTEGER, INTENT(IN) :: j_part
     REAL*8, INTENT(IN) :: diam_i
     REAL*8, INTENT(IN) :: diam_j
 
-    ! Diameters in meters
-    REAL*8 :: diam_im , diam_jm
 
 
-    IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
+    !aggregation_model = 'CONSTANT'
+    !aggregation_model = 'COSTA'
 
-       diam_im = 1.D-3 * 2.D0 ** ( - diam_i )
-       diam_jm = 1.D-3 * 2.D0 ** ( - diam_j )
+    SELECT CASE ( aggregation_model )
 
-    ELSE
+    CASE DEFAULT
 
-       diam_im = diam_i
-       diam_jm = diam_j
+       particles_beta = 0.D0
+
+    CASE ( 'CONSTANT' )
+
+       particles_beta = 1.D-15
+
+    CASE ( 'BROWNIAN' )
+
+       particles_beta = ( diam_i + diam_j ) ** 2 / ( diam_i + diam_j ) 
+
+    CASE ( 'SUM' )
+
+       particles_beta =  diam_i**3 + diam_j**3
+
+    CASE ( 'COSTA')
+
+       particles_beta = aggregation_kernel(i_part,j_part,diam_i,diam_j)
+
+    END SELECT
+
+    IF ( verbose_level .GE. 2 ) THEN
+
+       WRITE(*,*) 'beta =',particles_beta
+       WRITE(*,*) 
+
+       WRITE(*,FMT) ' ','END particles_beta'
+       indent_space = indent_space - 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
 
     END IF
-
-    particles_beta = ( diam_im + diam_jm ) ** 2 / ( diam_im + diam_jm ) 
 
     RETURN
 
@@ -590,31 +704,57 @@ CONTAINS
   !> This function evaluates the aggregation kernel, using the expression given 
   !> in Textor et al. 2006.
   !> \param[in]   i_part   particle phase index 
-  !> \param[in]   diam1    particle diameter (m)
-  !> \param[in]   diam2    particle diameter (m)
+  !> \param[in]   j_part   particle phase index 
+  !> \param[in]   diam_i   particle diameter (m)
+  !> \param[in]   diam_j   particle diameter (m)
   !> \date 24/01/2014
   !> @author 
   !> Mattia de' Michieli Vitturi
   !******************************************************************************
 
-  FUNCTION aggregation_kernel(i_part,diam1,diam2)
+  FUNCTION aggregation_kernel(i_part,j_part,diam_i,diam_j)
 
     IMPLICIT NONE
 
     REAL*8 :: aggregation_kernel
 
     INTEGER, INTENT(IN) :: i_part
-    REAL*8, INTENT(IN) :: diam1
-    REAL*8, INTENT(IN) :: diam2
+    INTEGER, INTENT(IN) :: j_part
+    REAL*8, INTENT(IN) :: diam_i
+    REAL*8, INTENT(IN) :: diam_j
 
     REAL*8 :: beta
     REAL*8 :: alfa
 
-    beta = collision_kernel(i_part,diam1,diam2)
+    IF ( verbose_level .GE. 2 ) THEN
 
-    alfa = coalescence_efficiency(i_part,diam1,diam2)
+       indent_space = indent_space + 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
+       WRITE(*,FMT) ' ','BEGINNING aggregation_kernel'
+       READ(*,*)
+
+    END IF
+
+    beta = collision_kernel(i_part,j_part,diam_i,diam_j)
+
+    alfa = coalescence_efficiency(i_part,j_part,diam_i,diam_j)
 
     aggregation_kernel = beta * alfa
+
+    !WRITE(*,*) 'aggregation_kernel, beta, alfa',aggregation_kernel, beta, alfa
+    !READ(*,*)
+
+    IF ( verbose_level .GE. 2 ) THEN
+
+       WRITE(*,FMT) ' ','END aggregation_kernel'
+       indent_space = indent_space - 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
+
+    END IF
+
+    RETURN
 
   END FUNCTION aggregation_kernel
 
@@ -622,14 +762,15 @@ CONTAINS
   !> \brief Collision kernel 
   !
   !> \param[in]   i_part   particle phase index 
-  !> \param[in]   diam1    particle diameter (m)
-  !> \param[in]   diam2    particle diameter (m)
+  !> \param[in]   j_part   particle phase index 
+  !> \param[in]   diam_i   particle diameter (m)
+  !> \param[in]   diam_j   particle diameter (m)
   !> \date 24/01/2014
   !> @author 
   !> Mattia de' Michieli Vitturi
   !******************************************************************************
 
-  FUNCTION collision_kernel(i_part,diam1,diam2)
+  FUNCTION collision_kernel(i_part,j_part,diam_i,diam_j)
 
     USE meteo_module, ONLY : visc_atm
 
@@ -640,8 +781,9 @@ CONTAINS
     REAL*8 :: collision_kernel
 
     INTEGER, INTENT(IN) :: i_part
-    REAL*8, INTENT(IN) :: diam1
-    REAL*8, INTENT(IN) :: diam2
+    INTEGER, INTENT(IN) :: j_part
+    REAL*8,INTENT(IN) :: diam_i
+    REAL*8,INTENT(IN) :: diam_j
 
     !> Brownian motion collisions kernel
     REAL*8 :: beta_B   
@@ -656,7 +798,7 @@ CONTAINS
     REAL*8 :: k_b
 
     !> Partciles settling velocities
-    REAL*8 :: Vs_1 , Vs_2
+    REAL*8 :: Vs_i , Vs_j
 
     !> Gravitational collision efficiency
     REAL*8 :: E_coll
@@ -670,32 +812,50 @@ CONTAINS
     !> Air kinematic viscosity
     REAL*8 :: air_kin_viscosity
 
-    REAL*8 :: tp
 
-!!! WARNING: uninitialized variable
-    air_kin_viscosity = 1.5D-5
-    tp = 1000.D0
-    epsilon = 1.D0
-!!!
+    IF ( verbose_level .GE. 2 ) THEN
+
+       indent_space = indent_space + 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
+       WRITE(*,FMT) ' ','BEGINNING collision_kernel'
+       READ(*,*)
+
+    END IF
+
 
     k_b =1.3806488D-23 
 
-    beta_B = 2.D0 / 3.D0 * k_b * tp / visc_atm * ( diam1 + diam2 )**2           &
-         / ( diam1*diam2 ) 
+    visc_atm = 1.98D-5
 
-    Gamma_s = DSQRT( 1.3D0 * epsilon * air_kin_viscosity )
+    beta_B = 2.D0 / 3.D0 * k_b * temp_part / visc_atm * ( diam_i + diam_j )**2    &
+         / ( diam_i*diam_j ) 
 
-    E_coll = collision_efficiency(i_part,diam1,diam2)
+    ! Gamma_s = DSQRT( 1.3D0 * epsilon * air_kin_viscosity )
 
-    beta_S = 1.D0 / 6.D0 * Gamma_s * ( diam1 + diam2 )**3
+    ! Value from Table 1 (Costa 2010)
+    Gamma_s = 0.0045D0 
 
-    Vs_1 = particles_settling_velocity(i_part,diam1)
+    beta_S = 1.D0 / 6.D0 * Gamma_s * ( diam_i + diam_j )**3
 
-    Vs_2 = particles_settling_velocity(i_part,diam2)
+    Vs_i = particles_settling_velocity(i_part,diam_i)
 
-    beta_DS = pi_g / 4.D0 * ( diam1 + diam2 )**2 * ABS( Vs_2 - Vs_1 )
+    Vs_j = particles_settling_velocity(j_part,diam_j)
+
+    beta_DS = pi_g / 4.D0 * ( diam_i + diam_j )**2 * ABS( Vs_j - Vs_i )
 
     collision_kernel = beta_B + beta_S + beta_DS
+
+    IF ( verbose_level .GE. 2 ) THEN
+
+       WRITE(*,FMT) ' ','END collision_kernel'
+       indent_space = indent_space - 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
+
+    END IF
+
+    RETURN
 
   END FUNCTION collision_kernel
 
@@ -703,14 +863,15 @@ CONTAINS
   !> \brief Collision efficiency 
   !
   !> \param[in]   i_part   particle phase index 
-  !> \param[in]   diam1    particle diameter (m)
-  !> \param[in]   diam2    particle diameter (m)
+  !> \param[in]   j_part   particle phase index 
+  !> \param[in]   diam_i   particle diameter (m)
+  !> \param[in]   diam_j   particle diameter (m)
   !> \date 24/01/2014
   !> @author 
   !> Mattia de' Michieli Vitturi
   !******************************************************************************
 
-  FUNCTION collision_efficiency(i_part,diam1,diam2)
+  FUNCTION collision_efficiency(i_part,j_part,diam_i,diam_j)
 
     USE variables, ONLY : gi
 
@@ -719,8 +880,10 @@ CONTAINS
     REAL*8 :: collision_efficiency
 
     INTEGER, INTENT(IN) :: i_part
-    REAL*8, INTENT(IN) :: diam1
-    REAL*8, INTENT(IN) :: diam2
+    INTEGER, INTENT(IN) :: j_part
+
+    REAL*8, INTENT(IN) :: diam_i
+    REAL*8, INTENT(IN) :: diam_j
 
     REAL*8 :: E_V , E_A
 
@@ -731,33 +894,36 @@ CONTAINS
     REAL*8 :: kin_visc_air
 
     !> Partciles settling velocities
-    REAL*8 :: Vs_1 , Vs_2
+    REAL*8 :: Vs_i , Vs_j
 
+    IF ( verbose_level .GE. 2 ) THEN
 
-!!! WARNING: uninitialized variable
-    kin_visc_air = 1.5D-5
-    E_A = 0.D0
-!!!
-
-    Vs_1 = particles_settling_velocity(i_part,diam1)
-
-    Vs_2 = particles_settling_velocity(i_part,diam2)
-
-    IF ( diam1 .GT. diam2 ) THEN
-
-       Re = diam1 * Vs_1 / kin_visc_air
-
-       Stokes = 2.D0 * Vs_2 * ABS( Vs_1 - Vs_2 ) / diam1 * gi
-
-    ELSE
-
-       Re = diam2 * Vs_2 / kin_visc_air 
-
-       Stokes = 2.D0 * Vs_1 * ABS( Vs_2 - Vs_1 ) / diam2 * gi
+       indent_space = indent_space + 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
+       WRITE(*,FMT) ' ','BEGINNING collision_efficiency'
 
     END IF
 
 
+    ! Settling velocities
+    Vs_i = particles_settling_velocity(i_part,diam_i)
+    Vs_j = particles_settling_velocity(j_part,diam_j)
+
+
+    IF ( diam_i .GT. diam_j ) THEN
+
+       Re = diam_i * Vs_i / kin_visc_air
+
+       Stokes = 2.D0 * Vs_j * ABS( Vs_i - Vs_j ) / diam_i * gi
+
+    ELSE
+
+       Re = diam_j * Vs_j / kin_visc_air 
+
+       Stokes = 2.D0 * Vs_i * ABS( Vs_j - Vs_i ) / diam_j * gi
+
+    END IF
 
     IF ( Stokes > 1.214 ) THEN
 
@@ -772,6 +938,17 @@ CONTAINS
 
     collision_efficiency = ( 60.D0 * E_V + E_A * Re ) / ( 60.D0 * Re )
 
+    IF ( verbose_level .GE. 2 ) THEN
+
+       WRITE(*,FMT) ' ','END collision_efficiency'
+       indent_space = indent_space - 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
+
+    END IF
+
+    RETURN
+
   END FUNCTION collision_efficiency
 
 
@@ -779,14 +956,15 @@ CONTAINS
   !> \brief Coalescence efficiency 
   !
   !> \param[in]   i_part   particle phase index 
-  !> \param[in]   diam1    particle diameter (m)
-  !> \param[in]   diam2    particle diameter (m)
+  !> \param[in]   j_part   particle phase index 
+  !> \param[in]   diam_i   particle diameter (m)
+  !> \param[in]   diam_j   particle diameter (m)
   !> \date 24/01/2014
   !> @author 
   !> Mattia de' Michieli Vitturi
   !******************************************************************************
 
-  FUNCTION coalescence_efficiency(i_part,diam1,diam2)
+  FUNCTION coalescence_efficiency(i_part,j_part,diam_i,diam_j)
 
     USE variables, ONLY: gi
 
@@ -794,9 +972,11 @@ CONTAINS
 
     REAL*8 :: coalescence_efficiency
 
-    INTEGER :: i_part
-    REAL*8, INTENT(IN) :: diam1
-    REAL*8, INTENT(IN) :: diam2
+    INTEGER, INTENT(IN) :: i_part
+    INTEGER, INTENT(IN) :: j_part
+
+    REAL*8, INTENT(IN) :: diam_i
+    REAL*8, INTENT(IN) :: diam_j
 
     !> particle Stokes number
     REAL*8 :: Stokes
@@ -808,33 +988,39 @@ CONTAINS
     REAL*8 :: q
 
     !> Partciles settling velocities
-    REAL*8 :: Vs_1 , Vs_2
+    REAL*8 :: Vs_i , Vs_j
 
-    REAL*8 :: tp
+    REAL*8 :: rho_i , rho_j
 
-!!! UNINITIALIZED VARIALBES: CHECK
-    tp = 1000
-!!!
+    REAL*8 :: mu_liq
 
-    IF ( tp .LE. 273 ) THEN
+    IF ( verbose_level .GE. 2 ) THEN
+
+       indent_space = indent_space + 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
+       WRITE(*,FMT) ' ','BEGINNING coalescence_efficiency'
+
+    END IF
+
+
+    IF ( temp_part .LE. 273.D0 ) THEN
 
        coalescence_efficiency = 0.09D0
 
     ELSE
 
-       Vs_1 = particles_settling_velocity(i_part,diam1)
+       Vs_i = particles_settling_velocity(i_part,diam_i)
+       Vs_j = particles_settling_velocity(j_part,diam_j)
 
-       Vs_2 = particles_settling_velocity(i_part,diam2)
+       rho_i = particles_density(i_part,diam_i)
+       rho_j = particles_density(j_part,diam_j)
 
-       IF ( diam1 .GT. diam2 ) THEN
 
-          Stokes = 2.D0 * Vs_2 * ABS( Vs_1 - Vs_2 ) / diam1 * gi
+       mu_liq = 5.43D-4
 
-       ELSE
-
-          Stokes = 2.D0 * Vs_1 * ABS( Vs_2 - Vs_1 ) / diam2 * gi
-
-       END IF
+       Stokes = 8.d0 * 0.5D0 * ( rho_i + rho_j ) / ( 9.d0 * mu_liq )            &
+            * diam_i * diam_j / ( diam_i + diam_j )
 
        Stokes_cr = 1.3D0
 
@@ -844,8 +1030,18 @@ CONTAINS
 
     END IF
 
-  END FUNCTION coalescence_efficiency
+    IF ( verbose_level .GE. 2 ) THEN
 
+       WRITE(*,FMT) ' ','END coalescence_efficiency'
+       indent_space = indent_space - 2
+       WRITE(FMT,*) indent_space
+       FMT = "(A" // TRIM(FMT) // ",A)"
+
+    END IF
+
+    RETURN
+
+  END FUNCTION coalescence_efficiency
 
 
   !******************************************************************************
@@ -864,6 +1060,7 @@ CONTAINS
 
     ! external variables
     USE variables, ONLY : verbose_level
+    USE variables, ONLY : pi_g
 
     ! external procedures
     USE meteo_module, ONLY : zmet
@@ -873,13 +1070,16 @@ CONTAINS
     REAL*8, DIMENSION(n_part,n_nodes), INTENT(IN) :: xi
     REAL*8, DIMENSION(n_part,n_nodes), INTENT(IN) :: w
 
-    REAL*8, DIMENSION(n_part,n_nodes) :: part_dens_array
-    REAL*8, DIMENSION(n_part,n_nodes) :: part_set_vel_array
-    REAL*8, DIMENSION(n_part,n_nodes) :: part_cp_array
-    REAL*8, DIMENSION(n_part,n_nodes,n_nodes) :: part_beta_array
+
+    INTEGER :: j_node , j1_node , j2_node
 
     INTEGER :: i , j , j1 , j2
-    INTEGER :: i_part
+    INTEGER :: i_part , j_part
+
+    INTEGER :: i_mom
+    
+    REAL*8 :: diam_i_j1 , diam_i_j2
+    REAL*8 :: diam_j_j1 , diam_j_j2
 
     CALL zmet
 
@@ -894,17 +1094,6 @@ CONTAINS
 
           part_cp_array(i_part,j) = particles_heat_capacity( i_part,xi(i_part,j))  
 
-          IF ( aggregation_flag ) THEN
-
-             DO j2=1,n_nodes
-
-                part_beta_array(i_part,j,j2) = particles_beta( xi(i_part,j) ,   &
-                     xi(i_part,j2) )
-
-             END DO
-
-          END IF
-
        END DO
 
        IF ( verbose_level .GE. 2 ) THEN
@@ -917,6 +1106,43 @@ CONTAINS
           WRITE(*,*) 'part_cp_array',part_cp_array(i_part,:)
 
        END IF
+
+    END DO
+
+
+    DO i_part=1,n_part_org
+
+       DO j1_node=1,n_nodes
+
+          IF ( aggregation(i_part) ) THEN
+
+             j_part = aggr_idx(i_part)
+
+             DO j2_node=1,n_nodes
+
+
+                diam_i_j1 =  1.D-3 * 2.D0 ** ( -xi(i_part,j1_node) )
+                diam_i_j2 =  1.D-3 * 2.D0 ** ( -xi(i_part,j2_node) )
+                diam_j_j1 =  1.D-3 * 2.D0 ** ( -xi(j_part,j1_node) )
+                diam_j_j2 =  1.D-3 * 2.D0 ** ( -xi(j_part,j2_node) )
+
+                part_beta_array(i_part,i_part,j1_node,j2_node) = particles_beta( &
+                     i_part , i_part , diam_i_j1 , diam_i_j2 )
+
+                part_beta_array(i_part,j_part,j1_node,j2_node) = particles_beta( &
+                     i_part , j_part , diam_i_j1 , diam_j_j2 )
+
+                part_beta_array(j_part,i_part,j1_node,j2_node) = particles_beta( &
+                     j_part , i_part , diam_j_j1 , diam_i_j2 )
+
+                part_beta_array(j_part,j_part,j1_node,j2_node) = particles_beta( &
+                     j_part , j_part , diam_j_j1 , diam_j_j2 )
+
+             END DO
+
+          END IF
+
+       END DO
 
     END DO
 
@@ -952,26 +1178,6 @@ CONTAINS
 
           IF ( aggregation_flag ) THEN
 
-             birth_term(i_part,i) = 0.D0
-             death_term(i_part,i) = 0.D0
-
-             DO j1=1,n_nodes
-
-                DO j2=1,n_nodes
-
-                   birth_term(i_part,i) = birth_term(i_part,i) + w(i_part,j1)   &
-                        * w(i_part,j2) * part_beta_array(i_part,j1,j2)          &
-                        *( xi(i_part,j1)**3 + xi(i_part,j2)**3 ) ** ( i / 3.D0 )
-
-                   death_term(i_part,i) = death_term(i_part,i) - w(i_part,j1)   &
-                        * xi(i_part,j1) * part_beta_array(i_part,j1,j2)         &
-                        * w(i_part,j1) * w(i_part,j2) 
-
-                END DO
-
-             END DO
-
-             birth_term(i_part,i) = 0.5D0 * birth_term(i_part,i)
 
           END IF
 
@@ -982,10 +1188,161 @@ CONTAINS
              WRITE(*,*) 'set_mom(i_part,i_mom) = ',set_mom(i_part,i)
 
           END IF
-             
+
        END DO
 
+       IF ( ( aggregation(i_part) ) .AND. ( i_part .LE. n_part_org) ) THEN
+
+          ! index of the aggregates family for the family i_part
+          j_part = aggr_idx(i_part)
+
+          ! WRITE(*,*) 'particles',i_part,j_part
+
+          mom_loop:DO i_mom=0,n_mom-1
+
+             ! total birth rate moments for the i_part family (original - org)
+             !             birth_mom(i_part,i_mom) = 0.D0
+             ! total death rate moments for the i_part family (original - org)
+             !             death_mom(i_part,i_mom) = 0.D0
+
+             ! total birth rate moments for the j_part family (nonOrg)
+             !             birth_mom(j_part,i_mom) = 0.D0
+             ! total death rate moments for the j_part family (nonOrg)
+             !             death_mom(j_part,i_mom) = 0.D0
+
+             DO j1=1,n_nodes
+
+                DO j2=1,n_nodes
+
+                   diam_i_j1 = 1.D-3 * 2.D0 ** ( - xi(i_part,j1) )
+                   diam_i_j2 = 1.D-3 * 2.D0 ** ( - xi(i_part,j2) )
+                   diam_j_j1 = 1.D-3 * 2.D0 ** ( - xi(j_part,j1) )
+                   diam_j_j2 = 1.D-3 * 2.D0 ** ( - xi(j_part,j2) )
+
+                   ! death of org due to org-org aggregation
+                   death_mom(i_part,i_mom) = death_mom(i_part,i_mom)            &
+                        + w(i_part,j1) * w(i_part,j2) * xi(i_part,j1)**i_mom    &
+                        * part_beta_array(i_part,i_part,j1,j2) * 6.D0           &
+                        / ( pi_g * diam_i_j2**3 * part_dens_array(i_part,j2) )
+
+                   WRITE(*,*) i_part,j_part,j1,j2
+                   WRITE(*,*) w(i_part,j1) , w(i_part,j2) , w(j_part,j2) ,      &
+                        xi(i_part,j1)**i_mom
+                   WRITE(*,*) part_beta_array(i_part,i_part,j1,j2),             &
+                        death_mom(i_part,i_mom),diam_i_j1**3
+
+                   ! death of org due to org-nonOrg aggregation
+                   death_mom(i_part,i_mom) = death_mom(i_part,i_mom)            &
+                        + w(i_part,j1) * w(j_part,j2) * xi(i_part,j1)**i_mom    &
+                        * part_beta_array(i_part,j_part,j1,j2) * 6.D0           &
+                        / ( pi_g * diam_j_j2**3 * part_dens_array(j_part,j2) )
+
+                   WRITE(*,*) part_beta_array(i_part,i_part,j1,j2),             &
+                        death_mom(i_part,i_mom)
+
+                   ! death of nonOrg due to nonOrg-org aggregation
+                   death_mom(j_part,i_mom) = death_mom(j_part,i_mom)            &
+                        + w(j_part,j1) * w(i_part,j2) * xi(j_part,j1)**i_mom    &
+                        * part_beta_array(j_part,i_part,j1,j2) * 6.D0           &
+                        / ( pi_g * diam_i_j2**3 * part_dens_array(i_part,j2) )
+
+                   ! death of nonOrg due to nonOrg-nonOrg aggregation
+                   death_mom(j_part,i_mom) = death_mom(j_part,i_mom)            &
+                        + w(j_part,j1) * w(j_part,j2) * xi(j_part,j1)**i_mom    &
+                        * part_beta_array(j_part,j_part,j1,j2) * 6.D0           &
+                        / ( pi_g * diam_j_j2**3 * part_dens_array(j_part,j2) )
+
+                   ! birth of nonOrg due to org-org aggregation
+                   birth_mom(j_part,i_mom) = birth_mom(j_part,i_mom)            &
+                        + 0.5D0 * w(i_part,j1) * w(i_part,j2)                   &
+                        * part_beta_array(i_part,i_part,j1,j2) * 6.D0 / pi_g    &
+                        * ( part_dens_array(i_part,j1) * diam_i_j1**3           &
+                        + part_dens_array(i_part,j2) * diam_i_j2**3 )           &
+                        / ( part_dens_array(i_part,j1) * diam_i_j1**3           &
+                        * part_dens_array(i_part,j2) * diam_i_j2**3 )           &
+                        * ( - log( 2.D0** ( - 3.D0 * xi(i_part,j1) )            &
+                        +  2.D0** ( - 3.D0 * xi(i_part,j2) ) ) / ( 3.D0         &
+                        * log(2.D0) ) ) ** i_mom
+
+                   ! birth of nonOrg due to nonOrg-nonOrg aggregation
+                   birth_mom(j_part,i_mom) = birth_mom(j_part,i_mom)            &
+                        + 0.5D0 * w(j_part,j1) * w(j_part,j2)                   &
+                        * part_beta_array(j_part,j_part,j1,j2) * 6.D0 / pi_g    &
+                        * ( part_dens_array(j_part,j1) * diam_j_j1**3           &
+                        + part_dens_array(j_part,j2) * diam_j_j2**3 )           &
+                        / ( part_dens_array(j_part,j1) * diam_j_j1**3           &
+                        * part_dens_array(j_part,j2) * diam_j_j2**3 )           &
+                        * ( - log( 2.D0** ( - 3.D0 * xi(j_part,j1) )            &
+                        +  2.D0** ( - 3.D0 * xi(j_part,j2) ) ) / ( 3.D0         &
+                        * log(2.D0) ) ) ** i_mom
+
+
+                   ! birth of nonOrg due to org-nonOrg aggregation
+                   birth_mom(j_part,i_mom) = birth_mom(j_part,i_mom)            &
+                        + w(i_part,j1) * w(j_part,j2)                           &
+                        * part_beta_array(i_part,j_part,j1,j2) * 6.D0 / pi_g    &
+                        * ( part_dens_array(i_part,j1) * diam_i_j1**3           &
+                        + part_dens_array(j_part,j2) * diam_j_j2**3 )           &
+                        / ( part_dens_array(i_part,j1) * diam_i_j1**3           &
+                        * part_dens_array(j_part,j2) * diam_j_j2**3 )           &
+                        * ( - log( 2.D0** ( - 3.D0 * xi(i_part,j1) )            &
+                        +  2.D0** ( - 3.D0 * xi(j_part,j2) ) ) / ( 3.D0         &
+                        * log(2.D0) ) ) ** i_mom
+
+                END DO
+
+             END DO
+
+             IF ( verbose_level .GE. 2 ) THEN
+
+                WRITE(*,*) 'i_part',i_part
+
+                WRITE(*,*) 'birth',i_part,i_mom,birth_mom(i_part,i_mom)
+                WRITE(*,*) 'death',i_part,i_mom,death_mom(i_part,i_mom)
+
+                WRITE(*,*) 'birth',j_part,i_mom,birth_mom(j_part,i_mom)
+                WRITE(*,*) 'death',j_part,i_mom,death_mom(j_part,i_mom)
+
+             END IF
+
+          END DO mom_loop
+
+
+          mass_transfer_term(i_part) = 0.D0
+
+          DO j1=1,n_nodes
+
+             DO j2=1,n_nodes
+
+                diam_i_j1 = 1.D-3 * 2.D0 ** ( - xi(i_part,j1) )
+                diam_i_j2 = 1.D-3 * 2.D0 ** ( - xi(i_part,j2) )
+                diam_j_j1 = 1.D-3 * 2.D0 ** ( - xi(j_part,j1) )
+                diam_j_j2 = 1.D-3 * 2.D0 ** ( - xi(j_part,j2) )
+
+                ! death of org due to org-org aggregation
+                mass_transfer_term(i_part) = mass_transfer_term(i_part)         &
+                     + w(i_part,j1) * w(i_part,j2)                              &
+                     * part_beta_array(i_part,i_part,j1,j2) * 6.D0              &
+                     / ( pi_g * diam_i_j1**3 * part_dens_array(i_part,j1)**2 )
+
+
+                ! death of org due to org-nonOrg aggregation
+                mass_transfer_term(i_part) = mass_transfer_term(i_part)         &
+                     + w(i_part,j1) * w(j_part,j2)                              &
+                     * part_beta_array(i_part,j_part,j1,j2) * 6.D0              &
+                     / ( pi_g * diam_i_j1**3 * part_dens_array(i_part,j1)**2 )
+
+
+             END DO
+
+          END DO
+
+          mass_transfer_term(j_part) = - mass_transfer_term(i_part)
+
+       END IF
+
     END DO
+
 
     RETURN
 

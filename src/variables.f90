@@ -44,6 +44,8 @@ MODULE variables
   !> Flag for water  
   LOGICAL :: water_flag
 
+  LOGICAL :: aggregation_flag
+  
   LOGICAL :: write_flag
 
   REAL*8 :: height_obj 
@@ -52,5 +54,10 @@ MODULE variables
   REAL*8 :: w_min
   REAL*8 :: w_max
   INTEGER :: n_values
+
+  INTEGER :: indent_space
+
+  CHARACTER(LEN=40) FMT
+
   
 END MODULE variables

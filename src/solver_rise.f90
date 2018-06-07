@@ -98,7 +98,8 @@ CONTAINS
          gas_mass_fraction , cpvolcgas , rvolcgas
 
     USE particles_module, ONLY: mom , set_rhop_mom , set_cp_rhop_mom , set_mom ,&
-         set_cp_mom , solid_volume_fraction , solid_mass_fraction
+         set_cp_mom , solid_volume_fraction , solid_mass_fraction , aggregation,&
+         birth_mom , death_mom , mass_transfer_term
 
     USE plume_module, ONLY: s , r , u , w , mag_u , phi , alpha_inp , beta_inp ,&
          rp , prob_factor , particles_loss , r0 , z
@@ -112,6 +113,8 @@ CONTAINS
     INTEGER :: i_part
     INTEGER :: i_gas
 
+    INTEGER :: idx
+    
     REAL*8 :: ueps
 
     REAL*8 :: cos_phi
@@ -281,12 +284,22 @@ CONTAINS
 
        DO i=0,n_mom-1
 
+          idx = 8+i+(i_part-1)*n_mom
+          
           IF ( distribution_variable .EQ. "mass_fraction" ) THEN
 
              !---- Momentum equation RHS term (Eq. 32 PlumeMoM - GMD)
-             rhs_(8+i+(i_part-1)*n_mom) = - 2.D0 * prob_factor * r *            &
+             rhs_(idx) = - 2.D0 * prob_factor * r *            &
                   rho_mix * set_mom(i_part,i) * mom(i_part,i)
 
+             IF ( aggregation(i_part) ) THEN
+
+                rhs_(idx) = rhs_(idx) + r**2 * rho_mix**2 *                     &
+                     ( birth_mom(i_part,i) - death_mom(i_part,i) )
+
+             END IF
+
+             
           END IF
 
        END DO

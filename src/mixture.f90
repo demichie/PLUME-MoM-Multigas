@@ -296,7 +296,7 @@ CONTAINS
 
        END IF
 
-       IF ( verbose_level .GE. 2 ) THEN
+       IF ( verbose_level .GE. 1 ) THEN
 
           WRITE(*,*) 'i_part',i_part
           WRITE(*,*) 'xi',xi(i_part,:)
@@ -310,11 +310,11 @@ CONTAINS
 
        END DO
 
-       !WRITE(*,*) 'n_nodes',n_nodes
-       !WRITE(*,*) 'part_dens_array',part_dens_array
-       !WRITE(*,*) 'wi(i_part,:)',wi(i_part,:)
-       !WRITE(*,*) 'SUM( wi(i_part,:)',SUM( wi(i_part,:) )
-       !WRITE(*,*) ' mom(i_part,0)', mom(i_part,0)
+       WRITE(*,*) 'n_nodes',n_nodes
+       WRITE(*,*) 'part_dens_array',part_dens_array
+       WRITE(*,*) 'wi(i_part,:)',wi(i_part,:)
+       WRITE(*,*) 'SUM( wi(i_part,:)',SUM( wi(i_part,:) )
+       WRITE(*,*) ' mom(i_part,0)', mom(i_part,0)
 
        IF ( distribution_variable .EQ. 'mass_fraction' ) THEN
 

@@ -15,13 +15,14 @@ MODULE inpout
     USE plume_module, ONLY: vent_height, alpha_inp , beta_inp , particles_loss ,&
          r0 , w0 , z , log10_mfr
 
-    USE particles_module, ONLY: n_part , n_mom , mom0 , rhop_mom
+    USE particles_module, ONLY: n_part , n_mom , mom0 , rhop_mom , aggr_idx ,   &
+         n_part_org
 
     USE particles_module, ONLY : solid_partial_mass_fraction , diam1 , rho1 ,   &
          diam2 , rho2 , cp_part , settling_model , distribution ,               &
          distribution_variable , solid_mass_fraction , shape_factor
 
-    USE particles_module, ONLY : aggregation_flag
+    USE particles_module, ONLY : aggregation , aggregation_model
     
     USE meteo_module, ONLY: gt , gs , p0 , t0 , h1 , h2 , rh , visc_atm0 ,      &
          rair , cpair , read_atm_profile , u_r , z_r , exp_wind ,               &
@@ -157,7 +158,9 @@ MODULE inpout
   NAMELIST / initial_values / r0 , w0 , log10_mfr , mfr0 , tp0 ,                &
        initial_neutral_density , water_mass_fraction0 , vent_height , ds0 ,     &
        n_part , n_gas , distribution , distribution_variable , n_mom
- 
+
+  NAMELIST / aggregation_parameters / aggregation , aggregation_model
+  
   NAMELIST / hysplit_parameters / hy_deltaz , nbl_stop , n_cloud
  
   NAMELIST / mixture_parameters / diam1 , rho1 , diam2 , rho2 , cp_part ,       &
@@ -375,13 +378,16 @@ CONTAINS
 
     USE moments_module, ONLY : beta_function , wheeler_algorithm , coefficient
 
-    USE particles_module, ONLY: particles_density , allocate_particles
+    USE particles_module, ONLY: particles_density , allocate_particles ,        &
+         deallocate_particles
 
     IMPLICIT NONE
 
     LOGICAL :: tend1
     CHARACTER(LEN=80) :: card
 
+    INTEGER :: ios
+    
     INTEGER :: i , k , j
 
     REAL*8, DIMENSION(max_n_part) :: solid_volume_fraction0
@@ -450,6 +456,8 @@ CONTAINS
 
     INTEGER :: i_gas
 
+    INTEGER :: i_aggr
+    
     NAMELIST / beta_parameters / solid_partial_mass_fraction , p_beta , q_beta ,&
          d_max
 
@@ -1188,6 +1196,51 @@ CONTAINS
 
     IF ( verbose_level .GE. 1 ) WRITE(*,*) 'read initial_parameters: done'
 
+    ! ----- AGGREGATION
+    IF ( aggregation_flag ) THEN
+
+       n_part_org = n_part
+
+       READ(inp_unit, aggregation_parameters,IOSTAT=ios)
+
+       IF ( ios .NE. 0 ) THEN
+          
+          WRITE(*,*) 'IOSTAT=',ios
+          WRITE(*,*) 'ERROR: problem with namelist AGGREGATION_PARAMETERS'
+          WRITE(*,*) 'Please check the input file'
+          STOP
+          
+       ELSE
+          
+          REWIND(inp_unit)
+          
+       END IF
+       
+       WRITE(*,*) 'QUI'
+       n_part = n_part + COUNT(aggregation(1:n_part_org))
+
+       WRITE(*,*) 'n_part_org',n_part_org
+       WRITE(*,*) 'aggr_org',COUNT(aggregation(1:n_part_org))
+       WRITE(*,*) 'n_part',n_part
+
+       CALL deallocate_particles
+
+       CALL allocate_particles
+
+       aggregation(1:n_part) = .FALSE.
+       READ(inp_unit, aggregation_parameters)
+
+       WRITE(*,*) size(aggregation)
+       WRITE(*,*) 'aggr_org',COUNT(aggregation(1:n_part))
+                  
+       aggregation(n_part_org+1:n_part ) = .TRUE.
+
+       WRITE(*,*) 'aggr_tot',COUNT(aggregation(1:n_part))
+
+    END IF
+       
+    ! ---------
+    
     rvolcgas(1:n_gas) = -1.D0
     cpvolcgas(1:n_gas) = -1.D0
     volcgas_mol_wt(1:n_gas) = -1.D0
@@ -1320,6 +1373,28 @@ CONTAINS
 
     IF ( verbose_level .GE. 1 ) WRITE(*,*) 'read mixture_parameters: done'
 
+    i_aggr = 0
+
+    DO i_part = 1, n_part_org
+
+       IF ( aggregation(i_part) ) THEN
+
+          i_aggr = i_aggr + 1
+
+          aggr_idx(i_part) = n_part_org + i_aggr
+          aggr_idx(n_part_org + i_aggr) = i_part
+
+          diam1( n_part_org + i_aggr ) = diam1(i_part)
+          rho1( n_part_org + i_aggr ) = rho1(i_part)
+          diam2( n_part_org + i_aggr ) = diam2(i_part)
+          rho2( n_part_org + i_aggr ) = rho2(i_part)
+          cp_part( n_part_org + i_aggr ) = cp_part(i_part)
+ 
+       END IF
+
+    END DO
+
+    
 
     IF ( distribution .EQ. 'beta' ) THEN
 
@@ -1330,6 +1405,23 @@ CONTAINS
        READ(inp_unit, beta_parameters)
        WRITE(bak_unit, beta_parameters)
 
+       i_aggr = 0
+       
+       DO i_part = 1, n_part_org
+          
+          IF ( aggregation(i_part) ) THEN
+             
+             i_aggr = i_aggr + 1
+             
+             p_beta( n_part_org + i_aggr ) = p_beta(i_part)
+             q_beta( n_part_org + i_aggr ) = q_beta(i_part)
+             d_max( n_part_org + i_aggr ) = d_max(i_part)
+             
+          END IF
+          
+       END DO
+
+       
     ELSEIF ( distribution .EQ. 'lognormal' ) THEN
 
        ALLOCATE( mu_lognormal(n_part) )
@@ -1341,6 +1433,30 @@ CONTAINS
        READ(inp_unit, lognormal_parameters)
        WRITE(bak_unit, lognormal_parameters)
 
+       i_aggr = 0
+       
+       DO i_part = 1, n_part_org
+
+          IF ( mu_lognormal(i_part) .EQ. 0.D0) mu_lognormal(i_part) = 1.D-5
+          
+          IF ( aggregation(i_part) ) THEN
+             
+             i_aggr = i_aggr + 1
+             
+             solid_partial_mass_fraction( n_part_org + i_aggr ) = 0.0001D0      &
+                  * solid_partial_mass_fraction(i_part)
+
+             solid_partial_mass_fraction( i_part ) = 0.9999D0                   &
+                  * solid_partial_mass_fraction(i_part)
+
+             mu_lognormal( n_part_org + i_aggr ) = mu_lognormal(i_part)
+             sigma_lognormal( n_part_org + i_aggr ) = sigma_lognormal(i_part)
+             
+          END IF
+          
+       END DO
+
+       
        mu_bar = -log( 2.D0 ) * mu_lognormal
        sigma_bar = log( 2.D0 ) * sigma_lognormal
 
@@ -1355,7 +1471,22 @@ CONTAINS
 
        READ(inp_unit, constant_parameters)
        WRITE(bak_unit, constant_parameters)
+       
+       i_aggr = 0
 
+       DO i_part = 1, n_part_org
+          
+          IF ( aggregation(i_part) ) THEN
+             
+             i_aggr = i_aggr + 1
+             
+             diam_constant_phi( n_part_org + i_aggr ) = diam_constant_phi(i_part)
+             
+          END IF
+          
+       END DO
+
+       
        WHERE(diam_constant_phi .EQ. 0.D0) diam_constant_phi=1.D-5
        diam_constant = 1.D-3 * 2.D0**(-diam_constant_phi)
 
