@@ -99,7 +99,7 @@ CONTAINS
 
     USE particles_module, ONLY: mom , set_rhop_mom , set_cp_rhop_mom , set_mom ,&
          set_cp_mom , solid_volume_fraction , solid_mass_fraction , aggregation,&
-         birth_mom , death_mom , mass_transfer_term
+         birth_mom , death_mom
 
     USE plume_module, ONLY: s , r , u , w , mag_u , phi , alpha_inp , beta_inp ,&
          rp , prob_factor , particles_loss , r0 , z
