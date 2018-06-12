@@ -591,8 +591,6 @@ CONTAINS
        cpvolcgas_mix = 0.D0
 
     END IF
-    
-
 
     ! mass fraction of dry air in the mixture
     dry_air_mass_fraction = f_(8+n_part*n_mom) / f_(1) 
@@ -611,18 +609,9 @@ CONTAINS
 
        ! CALL moments_correction( f_(idx1:idx2) , iter )
 
-       IF ( distribution .EQ. 'constant' ) THEN
-
-          CALL wheeler_algorithm( f_(idx1:idx1+1) , distribution , xi(i_part,:),&
-               wi_temp(i_part,:) )
-
-       ELSE
-
-          CALL wheeler_algorithm( f_(idx1:idx2) , distribution , xi(i_part,:) , &
-               wi_temp(i_part,:) )
+       CALL wheeler_algorithm( f_(idx1:idx2) , distribution , xi(i_part,:) , &
+            wi_temp(i_part,:) )
  
-       END IF
-
        DO j=1,n_nodes
 
           part_dens_array(i_part,j) = particles_density( i_part , xi(i_part,j) )
@@ -639,7 +628,7 @@ CONTAINS
 
        END IF
 
-       IF ( verbose_level .GE. 2 ) THEN
+       IF ( verbose_level .GE. 1 ) THEN
 
           WRITE(*,*) 'rhoB_solid_U_r2',idx1,rhoB_solid_U_r2(i_part)
           WRITE(*,*) 'part_dens_array(i_part,:)',part_dens_array(i_part,:)
@@ -822,17 +811,8 @@ CONTAINS
 
        END IF
 
-       IF ( distribution .EQ. 'constant' ) THEN
-
-          CALL wheeler_algorithm( mom(i_part,0:1) , distribution , xi(i_part,:),&
-               wi(i_part,:) )
-
-       ELSE
-
-          CALL wheeler_algorithm(  mom(i_part,0:n_mom-1) , distribution ,       &
-               xi(i_part,:) , wi(i_part,:) )
-
-       END IF
+       CALL wheeler_algorithm(  mom(i_part,0:n_mom-1) , distribution ,          &
+            xi(i_part,:) , wi(i_part,:) )
 
     END DO
 

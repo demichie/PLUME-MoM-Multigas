@@ -433,7 +433,8 @@ CONTAINS
        
        ! IF ( hysplit_flag ) CALL write_hysplit(x,y,z,.FALSE.)
        
-       IF ( ( w .GE. 1.D-1) .AND. ( MAXVAL(( f - f_stepold ) / MAX(f,f_stepold) * ds) .LT. 1.D-4 ) ) THEN
+       IF ( ( w .GE. 1.D-1) .AND. ( MAXVAL(( f - f_stepold ) / MAX(f,f_stepold) &
+            * ds) .LT. 1.D-4 ) ) THEN
 
           ds = MIN(1.1D0*ds,5.D0)
           IF ( verbose_level .GT. 0 ) THEN

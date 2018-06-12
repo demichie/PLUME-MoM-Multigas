@@ -1216,12 +1216,12 @@ CONTAINS
           
        END IF
        
-       WRITE(*,*) 'QUI'
+       ! WRITE(*,*) 'QUI'
        n_part = n_part + COUNT(aggregation(1:n_part_org))
 
-       WRITE(*,*) 'n_part_org',n_part_org
-       WRITE(*,*) 'aggr_org',COUNT(aggregation(1:n_part_org))
-       WRITE(*,*) 'n_part',n_part
+       ! WRITE(*,*) 'n_part_org',n_part_org
+       ! WRITE(*,*) 'aggr_org',COUNT(aggregation(1:n_part_org))
+       ! WRITE(*,*) 'n_part',n_part
 
        CALL deallocate_particles
 
@@ -1230,12 +1230,12 @@ CONTAINS
        aggregation(1:n_part) = .FALSE.
        READ(inp_unit, aggregation_parameters)
 
-       WRITE(*,*) size(aggregation)
-       WRITE(*,*) 'aggr_org',COUNT(aggregation(1:n_part))
+       ! WRITE(*,*) size(aggregation)
+       ! WRITE(*,*) 'aggr_org',COUNT(aggregation(1:n_part))
                   
        aggregation(n_part_org+1:n_part ) = .TRUE.
 
-       WRITE(*,*) 'aggr_tot',COUNT(aggregation(1:n_part))
+       ! WRITE(*,*) 'aggr_tot',COUNT(aggregation(1:n_part))
 
     END IF
        
@@ -1394,8 +1394,6 @@ CONTAINS
 
     END DO
 
-    
-
     IF ( distribution .EQ. 'beta' ) THEN
 
        ALLOCATE( p_beta(n_part) )
@@ -1485,9 +1483,8 @@ CONTAINS
           END IF
           
        END DO
-
        
-       WHERE(diam_constant_phi .EQ. 0.D0) diam_constant_phi=1.D-5
+       WHERE ( diam_constant_phi .EQ. 0.D0) diam_constant_phi=1.D-5
        diam_constant = 1.D-3 * 2.D0**(-diam_constant_phi)
 
     END IF
@@ -1559,26 +1556,14 @@ CONTAINS
 
                 mom0(i_part,i) = diam_constant_phi(i_part)**i
 
-
              END IF
 
           END IF
 
        END DO
 
-
-       IF ( distribution .EQ. 'constant' ) THEN
-
-          CALL wheeler_algorithm( mom0(i_part,0:1) , distribution , xi , wi )
-
-       ELSE
-
-          CALL wheeler_algorithm( mom0(i_part,0:n_mom-1) , distribution , xi ,  &
-               wi )
+       CALL wheeler_algorithm( mom0(i_part,0:n_mom-1) , distribution , xi , wi )
  
-       END IF
-
-
        DO i=1,n_nodes
 
           part_dens_array(i) = particles_density( i_part , xi(i) )
@@ -1778,8 +1763,6 @@ CONTAINS
        CLOSE(mat_unit)
        
     END IF
-
-
 
     ! the parameters of the particles phases distributions are saved in a file 
     ! readable by Python
@@ -2327,8 +2310,17 @@ CONTAINS
 
   END SUBROUTINE write_inversion
 
+  !*****************************************************************************
+  !> \brief Dakota outputs
+  !
+  !> This subroutine writes the output values used for the coupled PlumeMoM/
+  !> Hysplit procedure.  
+  !> \date 11/06/2018
+  !> @authors 
+  !> Mattia de' Michieli Vitturi, Federica Pardini
+  !******************************************************************************
+  
   SUBROUTINE check_hysplit
-
 
     USE meteo_module, ONLY: rho_atm , ta, pa , interp_1d_scalar
     USE meteo_module, ONLY : cos_theta , sin_theta , u_atm , zmet 
@@ -2394,24 +2386,14 @@ CONTAINS
 
     READ(read_col_unit,*)
 
-    ! WRITE(*,*) 'col_lines',col_lines
-
     DO i = 1,col_lines
 
-       !READ(read_col_unit,111) z_col(i) , r_col(i) , x_col(i) , y_col(i) ,      &
-       !     rho_mix , temp_k , w , mag_u , atm_mass_fraction ,                  &
-       !     volcgas_mix_mass_fraction , solid_pmf(1:n_part,i) , rho_atm ,       &
-       !     mfr_col(i) , ta , pa
-
-       READ(read_col_unit,111) z_col(i) , r_col(i) , x_col(i) , y_col(i) ,     &
-	    rho_mix , temp_k , w , mag_u, da_mf , wv_mf , lw_mf , ice_mf,      &
-            solid_pmf(1:n_part,i) , volcgas_mf(1:n_gas,i), volcgas_tot_mf,     &
+       READ(read_col_unit,111) z_col(i) , r_col(i) , x_col(i) , y_col(i) ,      &
+	    rho_mix , temp_k , w , mag_u, da_mf , wv_mf , lw_mf , ice_mf,       &
+            solid_pmf(1:n_part,i) , volcgas_mf(1:n_gas,i), volcgas_tot_mf,      &
             rho_atm , mfr_col(i) , ta, pa
 
-
-       !gas_mf(i) = atm_mass_fraction + volcgas_mix_mass_fraction
        gas_mf(i) = da_mf + wv_mf + volcgas_tot_mf
-
 
        solid_mass_flux(1:n_part,i) =  solid_pmf(1:n_part,i) * (1.D0-gas_mf(i))  &
             * rho_mix * pi_g * r_col(i)**2 * mag_u
@@ -2461,16 +2443,10 @@ CONTAINS
        
     END IF
 
-  
-    ! WRITE(*,*) 'z_min',z_min
-  
     n_hy = FLOOR( ( z_max - z_min ) / hy_deltaz )
 
     solid_tot(1:n_part) = 0.D0
-
-    !WRITE(*,*) 'Solid mass released in the atmosphere at z_min (kg/s): ',z_min,SUM(solid_tot)
-
-
+    
     DO i = 1,n_hy
    
        z_bot = z_min + (i-1) * hy_deltaz
@@ -2500,12 +2476,12 @@ CONTAINS
           
           IF ( verbose_level .GE. 1 ) THEN
              
-             WRITE(*,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top + y_bot ) ,     &
+             WRITE(*,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top+y_bot ) , &
                   0.5D0 * ( z_top + z_bot ) , delta_solid(1:n_part)
              
           END IF
           
-          WRITE(hy_unit,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top + y_bot ) ,     &
+          WRITE(hy_unit,110) 0.5D0 * ( x_top+x_bot ) , 0.5D0 * ( y_top+y_bot ) ,&
                0.5D0 * ( z_top + z_bot ) , delta_solid(1:n_part)
           
        ELSE
@@ -2625,12 +2601,12 @@ CONTAINS
    
        IF ( verbose_level .GE. 1 ) THEN
           
-          WRITE(*,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top + y_bot ) ,     &
+          WRITE(*,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top + y_bot ) ,  &
                0.5D0 * ( z_top + z_bot ) , delta_solid(1:n_part)
           
        END IF
        
-       WRITE(hy_unit,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top + y_bot ) ,     &
+       WRITE(hy_unit,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top+y_bot ) , &
             0.5D0 * ( z_top + z_bot ) , delta_solid(1:n_part)
        
     ELSE

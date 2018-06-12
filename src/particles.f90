@@ -262,17 +262,8 @@ CONTAINS
 
        ! CALL moments_correction(mom(i_part,:),iter)
 
-       IF ( distribution .EQ. 'constant' ) THEN
-
-          CALL wheeler_algorithm( mom(i_part,0:1) , distribution , xi(i_part,:),&
-               w(i_part,:) )
-
-       ELSE
-
-          CALL wheeler_algorithm( mom(i_part,:) , distribution , xi(i_part,:) , &
-               w(i_part,:) )
-
-       END IF
+       CALL wheeler_algorithm( mom(i_part,0:n_mom-1) , distribution ,           &
+            xi(i_part,:) , w(i_part,:) )
 
        IF ( verbose_level .GE. 1 ) THEN
 
@@ -665,7 +656,7 @@ CONTAINS
 
     CASE ( 'CONSTANT' )
 
-       particles_beta = 1.D-15
+       particles_beta = 1.D-10
 
     CASE ( 'BROWNIAN' )
 
@@ -828,6 +819,7 @@ CONTAINS
 
     visc_atm = 1.98D-5
 
+    ! Eq. 3, first term Costa et al. JGR 2010
     beta_B = 2.D0 / 3.D0 * k_b * temp_part / visc_atm * ( diam_i + diam_j )**2    &
          / ( diam_i*diam_j ) 
 
@@ -836,12 +828,14 @@ CONTAINS
     ! Value from Table 1 (Costa 2010)
     Gamma_s = 0.0045D0 
 
+    ! Eq. 3, second term Costa et al. JGR 2010
     beta_S = 1.D0 / 6.D0 * Gamma_s * ( diam_i + diam_j )**3
 
     Vs_i = particles_settling_velocity(i_part,diam_i)
 
     Vs_j = particles_settling_velocity(j_part,diam_j)
 
+    ! Eq. 3, third term Costa et al. JGR 2010
     beta_DS = pi_g / 4.D0 * ( diam_i + diam_j )**2 * ABS( Vs_j - Vs_i )
 
     collision_kernel = beta_B + beta_S + beta_DS
@@ -1006,6 +1000,7 @@ CONTAINS
 
     IF ( temp_part .LE. 273.D0 ) THEN
 
+       ! Eq. 5 Costa et al. JGR 2010
        coalescence_efficiency = 0.09D0
 
     ELSE
@@ -1019,6 +1014,7 @@ CONTAINS
 
        mu_liq = 5.43D-4
 
+       ! Eq. 6 Costa et al. JGR 2010 (CHECK DENSITY!)
        Stokes = 8.d0 * 0.5D0 * ( rho_i + rho_j ) / ( 9.d0 * mu_liq )            &
             * diam_i * diam_j / ( diam_i + diam_j )
 
@@ -1026,6 +1022,7 @@ CONTAINS
 
        q = 0.8D0
 
+       ! Eq. 8 Costa et al. JGR 2010
        coalescence_efficiency = 1.D0 / ( 1.D0 + ( Stokes / Stokes_cr ) ) ** q 
 
     END IF
@@ -1120,7 +1117,6 @@ CONTAINS
 
              DO j2_node=1,n_nodes
 
-
                 diam_i_j1 =  1.D-3 * 2.D0 ** ( -xi(i_part,j1_node) )
                 diam_i_j2 =  1.D-3 * 2.D0 ** ( -xi(i_part,j2_node) )
                 diam_j_j1 =  1.D-3 * 2.D0 ** ( -xi(j_part,j1_node) )
@@ -1201,14 +1197,14 @@ CONTAINS
           mom_loop:DO i_mom=0,n_mom-1
 
              ! total birth rate moments for the i_part family (original - org)
-             !             birth_mom(i_part,i_mom) = 0.D0
+             birth_mom(i_part,i_mom) = 0.D0
              ! total death rate moments for the i_part family (original - org)
-             !             death_mom(i_part,i_mom) = 0.D0
+             death_mom(i_part,i_mom) = 0.D0
 
              ! total birth rate moments for the j_part family (nonOrg)
-             !             birth_mom(j_part,i_mom) = 0.D0
+             birth_mom(j_part,i_mom) = 0.D0
              ! total death rate moments for the j_part family (nonOrg)
-             !             death_mom(j_part,i_mom) = 0.D0
+             death_mom(j_part,i_mom) = 0.D0
 
              DO j1=1,n_nodes
 
@@ -1225,11 +1221,11 @@ CONTAINS
                         * part_beta_array(i_part,i_part,j1,j2) * 6.D0           &
                         / ( pi_g * diam_i_j2**3 * part_dens_array(i_part,j2) )
 
-                   WRITE(*,*) i_part,j_part,j1,j2
-                   WRITE(*,*) w(i_part,j1) , w(i_part,j2) , w(j_part,j2) ,      &
-                        xi(i_part,j1)**i_mom
-                   WRITE(*,*) part_beta_array(i_part,i_part,j1,j2),             &
-                        death_mom(i_part,i_mom),diam_i_j1**3
+                   !WRITE(*,*) i_part,j_part,j1,j2
+                   !WRITE(*,*) w(i_part,j1) , w(i_part,j2) , w(j_part,j2) ,      &
+                   !     xi(i_part,j1)**i_mom
+                   !WRITE(*,*) part_beta_array(i_part,i_part,j1,j2),             &
+                   !     death_mom(i_part,i_mom),diam_i_j1**3
 
                    ! death of org due to org-nonOrg aggregation
                    death_mom(i_part,i_mom) = death_mom(i_part,i_mom)            &
@@ -1237,8 +1233,8 @@ CONTAINS
                         * part_beta_array(i_part,j_part,j1,j2) * 6.D0           &
                         / ( pi_g * diam_j_j2**3 * part_dens_array(j_part,j2) )
 
-                   WRITE(*,*) part_beta_array(i_part,i_part,j1,j2),             &
-                        death_mom(i_part,i_mom)
+                   !WRITE(*,*) part_beta_array(i_part,i_part,j1,j2),             &
+                   !     death_mom(i_part,i_mom)
 
                    ! death of nonOrg due to nonOrg-org aggregation
                    death_mom(j_part,i_mom) = death_mom(j_part,i_mom)            &
@@ -1295,13 +1291,15 @@ CONTAINS
 
              IF ( verbose_level .GE. 2 ) THEN
 
-                WRITE(*,*) 'i_part',i_part
+                WRITE(*,*) 'i_part,i_mom',i_part,i_mom
 
                 WRITE(*,*) 'birth',i_part,i_mom,birth_mom(i_part,i_mom)
                 WRITE(*,*) 'death',i_part,i_mom,death_mom(i_part,i_mom)
-
+                WRITE(*,*) 'sum  ',i_part,i_mom,death_mom(i_part,i_mom)-birth_mom(i_part,i_mom)
                 WRITE(*,*) 'birth',j_part,i_mom,birth_mom(j_part,i_mom)
                 WRITE(*,*) 'death',j_part,i_mom,death_mom(j_part,i_mom)
+                WRITE(*,*) 'sum  ',j_part,i_mom,death_mom(j_part,i_mom)-birth_mom(j_part,i_mom)
+                READ(*,*)
 
              END IF
 
