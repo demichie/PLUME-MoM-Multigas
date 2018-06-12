@@ -62,9 +62,6 @@ MODULE particles_module
   !> Term accounting for the loss of particles because of aggregation 
   REAL*8, ALLOCATABLE, DIMENSION(:,:) :: death_mom
 
-  !> Term accounting for the mass transfer from non-aggr to aggr 
-  REAL*8, ALLOCATABLE, DIMENSION(:) :: mass_transfer_term
-  
   !> shape factor for settling velocity (Pfeiffer)
   REAL*8 :: shape_factor
 
@@ -164,7 +161,6 @@ CONTAINS
     ALLOCATE ( cp_mom(1:n_part,0:n_mom-1) )
     ALLOCATE ( birth_mom(1:n_part,0:n_mom-1) )
     ALLOCATE ( death_mom(1:n_part,0:n_mom-1) )
-    ALLOCATE ( mass_transfer_term(1:n_part) )
 
     ! Allocation of the parameters for the variable density
     ALLOCATE ( diam1(n_part) )
@@ -208,7 +204,6 @@ CONTAINS
     DEALLOCATE ( cp_mom )
     DEALLOCATE ( birth_mom )
     DEALLOCATE ( death_mom )
-    DEALLOCATE ( mass_transfer_term )
 
     ! Allocation of the parameters for the variable density
     DEALLOCATE ( diam1 )
@@ -1305,37 +1300,6 @@ CONTAINS
 
           END DO mom_loop
 
-
-          mass_transfer_term(i_part) = 0.D0
-
-          DO j1=1,n_nodes
-
-             DO j2=1,n_nodes
-
-                diam_i_j1 = 1.D-3 * 2.D0 ** ( - xi(i_part,j1) )
-                diam_i_j2 = 1.D-3 * 2.D0 ** ( - xi(i_part,j2) )
-                diam_j_j1 = 1.D-3 * 2.D0 ** ( - xi(j_part,j1) )
-                diam_j_j2 = 1.D-3 * 2.D0 ** ( - xi(j_part,j2) )
-
-                ! death of org due to org-org aggregation
-                mass_transfer_term(i_part) = mass_transfer_term(i_part)         &
-                     + w(i_part,j1) * w(i_part,j2)                              &
-                     * part_beta_array(i_part,i_part,j1,j2) * 6.D0              &
-                     / ( pi_g * diam_i_j1**3 * part_dens_array(i_part,j1)**2 )
-
-
-                ! death of org due to org-nonOrg aggregation
-                mass_transfer_term(i_part) = mass_transfer_term(i_part)         &
-                     + w(i_part,j1) * w(j_part,j2)                              &
-                     * part_beta_array(i_part,j_part,j1,j2) * 6.D0              &
-                     / ( pi_g * diam_i_j1**3 * part_dens_array(i_part,j1)**2 )
-
-
-             END DO
-
-          END DO
-
-          mass_transfer_term(j_part) = - mass_transfer_term(i_part)
 
        END IF
 
