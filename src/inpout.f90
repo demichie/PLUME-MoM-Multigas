@@ -22,7 +22,8 @@ MODULE inpout
          diam2 , rho2 , cp_part , settling_model , distribution ,               &
          distribution_variable , solid_mass_fraction , shape_factor
 
-    USE particles_module, ONLY : aggregation , aggregation_model
+    USE particles_module, ONLY : aggregation_array , aggregate_porosity ,       &
+         aggregation_model
     
     USE meteo_module, ONLY: gt , gs , p0 , t0 , h1 , h2 , rh , visc_atm0 ,      &
          rair , cpair , read_atm_profile , u_r , z_r , exp_wind ,               &
@@ -30,7 +31,8 @@ MODULE inpout
 
     USE solver_module, ONLY: ds0
 
-    USE mixture_module, ONLY: tp0 , water_mass_fraction0, initial_neutral_density
+    USE mixture_module, ONLY: t_mix0 , water_mass_fraction0,                    &
+         initial_neutral_density
 
     USE mixture_module, ONLY: n_gas , rvolcgas , cpvolcgas , rvolcgas_mix ,     &
          volcgas_mass_fraction , volcgas_mix_mass_fraction , cpvolcgas_mix ,    &
@@ -143,7 +145,7 @@ MODULE inpout
   
   NAMELIST / plume_parameters / alpha_inp , beta_inp , particles_loss
   
-  NAMELIST / water_parameters / rho_lw , rho_ice , added_water_temp ,              &
+  NAMELIST / water_parameters / rho_lw , rho_ice , added_water_temp ,           &
 
        added_water_mass_fraction
 
@@ -155,11 +157,12 @@ MODULE inpout
   
   NAMELIST / table_atm_parameters / month , lat , u_r , z_r , exp_wind
 
-  NAMELIST / initial_values / r0 , w0 , log10_mfr , mfr0 , tp0 ,                &
+  NAMELIST / initial_values / r0 , w0 , log10_mfr , mfr0 , t_mix0 ,             &
        initial_neutral_density , water_mass_fraction0 , vent_height , ds0 ,     &
        n_part , n_gas , distribution , distribution_variable , n_mom
 
-  NAMELIST / aggregation_parameters / aggregation , aggregation_model
+  NAMELIST / aggregation_parameters / aggregation_model , aggregation_array ,   &
+       aggregate_porosity
   
   NAMELIST / hysplit_parameters / hy_deltaz , nbl_stop , n_cloud
  
@@ -279,7 +282,7 @@ CONTAINS
        R0 = 0.D0 
        W0 = 0.D0
        Log10_mfr = -1.0
-       TP0 = 1273.D0
+       T_MIX0 = 1273.D0
        INITIAL_NEUTRAL_DENSITY = .FALSE.
        WATER_MASS_FRACTION0 = 3.0D-2
        VENT_HEIGHT =  1500.D0
@@ -1202,6 +1205,7 @@ CONTAINS
        n_part_org = n_part
 
        READ(inp_unit, aggregation_parameters,IOSTAT=ios)
+       WRITE(bak_unit, aggregation_parameters)
 
        IF ( ios .NE. 0 ) THEN
           
@@ -1217,25 +1221,25 @@ CONTAINS
        END IF
        
        ! WRITE(*,*) 'QUI'
-       n_part = n_part + COUNT(aggregation(1:n_part_org))
+       n_part = n_part + COUNT(aggregation_array(1:n_part_org))
 
        ! WRITE(*,*) 'n_part_org',n_part_org
-       ! WRITE(*,*) 'aggr_org',COUNT(aggregation(1:n_part_org))
+       ! WRITE(*,*) 'aggr_org',COUNT(aggregation_array(1:n_part_org))
        ! WRITE(*,*) 'n_part',n_part
 
        CALL deallocate_particles
 
        CALL allocate_particles
 
-       aggregation(1:n_part) = .FALSE.
+       aggregation_array(1:n_part) = .FALSE.
        READ(inp_unit, aggregation_parameters)
 
-       ! WRITE(*,*) size(aggregation)
-       ! WRITE(*,*) 'aggr_org',COUNT(aggregation(1:n_part))
+       ! WRITE(*,*) size(aggregation_array)
+       ! WRITE(*,*) 'aggr_org',COUNT(aggregation_array(1:n_part))
                   
-       aggregation(n_part_org+1:n_part ) = .TRUE.
+       aggregation_array(n_part_org+1:n_part ) = .TRUE.
 
-       ! WRITE(*,*) 'aggr_tot',COUNT(aggregation(1:n_part))
+       ! WRITE(*,*) 'aggr_tot',COUNT(aggregation_array(1:n_part))
 
     END IF
        
@@ -1308,7 +1312,7 @@ CONTAINS
                * cpvolcgas(i_gas)
           
           Rrhovolcgas_mix = Rrhovolcgas_mix + volcgas_mass_fraction0(i_gas)        &
-               / (  pa / ( rvolcgas(i_gas) * tp0 ) )
+               / (  pa / ( rvolcgas(i_gas) * t_mix0 ) )
           
        END DO
        
@@ -1338,7 +1342,7 @@ CONTAINS
 
     END IF
 
-    rhowv = pa / ( rwv * tp0 )
+    rhowv = pa / ( rwv * t_mix0 )
 
     ! ---- We assume all volcanic H2O at the vent is water vapor 
     water_vapor_mass_fraction = water_mass_fraction0
@@ -1377,7 +1381,7 @@ CONTAINS
 
     DO i_part = 1, n_part_org
 
-       IF ( aggregation(i_part) ) THEN
+       IF ( aggregation_array(i_part) ) THEN
 
           i_aggr = i_aggr + 1
 
@@ -1385,9 +1389,11 @@ CONTAINS
           aggr_idx(n_part_org + i_aggr) = i_part
 
           diam1( n_part_org + i_aggr ) = diam1(i_part)
-          rho1( n_part_org + i_aggr ) = rho1(i_part)
+          rho1( n_part_org + i_aggr ) = ( 1.D0 - aggregate_porosity(i_part) )   &
+               * rho1(i_part)
           diam2( n_part_org + i_aggr ) = diam2(i_part)
-          rho2( n_part_org + i_aggr ) = rho2(i_part)
+          rho2( n_part_org + i_aggr ) = ( 1.D0 - aggregate_porosity(i_part) )   &
+               * rho2(i_part)
           cp_part( n_part_org + i_aggr ) = cp_part(i_part)
  
        END IF
@@ -1407,7 +1413,7 @@ CONTAINS
        
        DO i_part = 1, n_part_org
           
-          IF ( aggregation(i_part) ) THEN
+          IF ( aggregation_array(i_part) ) THEN
              
              i_aggr = i_aggr + 1
              
@@ -1437,7 +1443,7 @@ CONTAINS
 
           IF ( mu_lognormal(i_part) .EQ. 0.D0) mu_lognormal(i_part) = 1.D-5
           
-          IF ( aggregation(i_part) ) THEN
+          IF ( aggregation_array(i_part) ) THEN
              
              i_aggr = i_aggr + 1
              
@@ -1474,7 +1480,7 @@ CONTAINS
 
        DO i_part = 1, n_part_org
           
-          IF ( aggregation(i_part) ) THEN
+          IF ( aggregation_array(i_part) ) THEN
              
              i_aggr = i_aggr + 1
              
@@ -2168,14 +2174,14 @@ CONTAINS
 
     USE meteo_module, ONLY: rho_atm , ta, pa
 
-    USE particles_module, ONLY: n_mom , n_part , solid_partial_mass_fraction , &
+    USE particles_module, ONLY: n_mom , n_part , solid_partial_mass_fraction ,  &
          mom , set_mom
 
     USE plume_module, ONLY: x , y , z , w , r , mag_u
 
-    USE mixture_module, ONLY: rho_mix , tp , atm_mass_fraction ,               &
-         volcgas_mix_mass_fraction , volcgas_mass_fraction,                    &
-         dry_air_mass_fraction , water_vapor_mass_fraction ,                   & 
+    USE mixture_module, ONLY: rho_mix , t_mix , atm_mass_fraction ,             &
+         volcgas_mix_mass_fraction , volcgas_mass_fraction,                     &
+         dry_air_mass_fraction , water_vapor_mass_fraction ,                    & 
          liquid_water_mass_fraction, ice_mass_fraction
 
     ! USE plume_model, ONLY : gas_mass_fraction
@@ -2234,7 +2240,7 @@ CONTAINS
 
     col_lines = col_lines + 1
 
-    WRITE(col_unit,101) z , r , x , y , rho_mix , tp - 273.15D0 , w , mag_u,    &
+    WRITE(col_unit,101) z , r , x , y , rho_mix , t_mix - 273.15D0 , w , mag_u, &
          dry_air_mass_fraction , water_vapor_mass_fraction ,                    & 
          liquid_water_mass_fraction , ice_mass_fraction ,                       &
          solid_partial_mass_fraction(1:n_part) , volcgas_mass_fraction(1:n_gas),& 
@@ -2330,7 +2336,7 @@ CONTAINS
 
     USE plume_module, ONLY: x , y , z , w , r , mag_u
 
-    USE mixture_module, ONLY: rho_mix , tp , atm_mass_fraction ,               &
+    USE mixture_module, ONLY: rho_mix , t_mix , atm_mass_fraction ,            &
          volcgas_mix_mass_fraction , volcgas_mass_fraction,                    &
          dry_air_mass_fraction , water_vapor_mass_fraction ,                   & 
          liquid_water_mass_fraction, ice_mass_fraction

@@ -94,12 +94,12 @@ CONTAINS
     USE meteo_module, ONLY: u_atm , rho_atm , ta , duatm_dz , cpair , rair ,    &
          cos_theta , sin_theta , sphu_atm , c_wv , h_wv0
 
-    USE mixture_module, ONLY: rho_mix , tp , rgasmix , rho_gas ,                &
+    USE mixture_module, ONLY: rho_mix , t_mix , rgasmix , rho_gas ,             &
          gas_mass_fraction , cpvolcgas , rvolcgas
 
     USE particles_module, ONLY: mom , set_rhop_mom , set_cp_rhop_mom , set_mom ,&
-         set_cp_mom , solid_volume_fraction , solid_mass_fraction , aggregation,&
-         birth_mom , death_mom
+         set_cp_mom , solid_volume_fraction , solid_mass_fraction ,             &
+         aggregation_array, birth_mom , death_mom
 
     USE plume_module, ONLY: s , r , u , w , mag_u , phi , alpha_inp , beta_inp ,&
          rp , prob_factor , particles_loss , r0 , z
@@ -252,22 +252,11 @@ CONTAINS
 
     END IF 
 
-    !---- Enthalpy conservation (Eq.7 Bursik 2001)(Eq. 23 PlumeMoM-GMD)
-    !rhs_(4) = 2.D0 * r * ueps * rho_atm * ( cpair * ta + gi * z                 &
-    !     + 0.5D0 * ueps**2 ) - ( r**2 ) * w * rho_atm * gi                      &
-    !     - tp * prob_factor * 2.D0 * r * cp_solid_term                          &
-    !     - rp * r * ( tp**4 - ta**4 )                                           &
-    !     + tp * SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas) )
-
-    !WRITE(*,*) 'SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas) '               &
-     !	,SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas))
-    !READ(*,*)   
-
     !---- Energy conservation    (Eq.2d Folch 2016) 
     rhs_(4) = 2.D0 * r * ueps * rho_atm * ( cpair * ta * ( 1.D0 - sphu_atm )    &
          + sphu_atm * ( h_wv0 - c_wv * ta ) + gi * z                            &
-         + 0.5D0 * ueps**2 ) - tp * prob_factor * 2.D0 * r * cp_solid_term      &
-         + tp * SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas) )   
+         + 0.5D0 * ueps**2 ) - t_mix * prob_factor * 2.D0 * r * cp_solid_term   &
+         + t_mix * SUM( cpvolcgas(1:n_gas) * volcgas_rate(1:n_gas) )   
 
 
     !---- Z integration   (Eq. 30 PlumeMoM - GMD)
@@ -292,7 +281,7 @@ CONTAINS
              rhs_(idx) = - 2.D0 * prob_factor * r *            &
                   rho_mix * set_mom(i_part,i) * mom(i_part,i)
 
-             IF ( aggregation(i_part) ) THEN
+             IF ( aggregation_array(i_part) ) THEN
 
                 rhs_(idx) = rhs_(idx) + r**2 * rho_mix**2 *                     &
                      ( birth_mom(i_part,i) - death_mom(i_part,i) )
@@ -338,14 +327,16 @@ CONTAINS
  
   SUBROUTINE lump(f_)
 
-    USE mixture_module, ONLY: rgasmix , rho_mix , tp
+    USE mixture_module, ONLY: rgasmix , rho_mix , t_mix
     USE mixture_module, ONLY: volcgas_mass_fraction , volcgas_mix_mass_fraction
     USE mixture_module, ONLY: atm_mass_fraction , mixture_enthalpy
     USE mixture_module, ONLY: dry_air_mass_fraction , water_mass_fraction
     USE mixture_module, ONLY: cpvolcgas_mix  , solid_tot_mass_fraction
-    USE mixture_module, ONLY: liquid_water_mass_fraction , water_vapor_mass_fraction, ice_mass_fraction
+    USE mixture_module, ONLY: liquid_water_mass_fraction ,                      &
+         water_vapor_mass_fraction, ice_mass_fraction
 
-    USE meteo_module, ONLY: u_atm , c_lw , c_wv , cpair , h_lw0 , h_wv0 , T_ref, c_ice
+    USE meteo_module, ONLY: u_atm , c_lw , c_wv , cpair , h_lw0 , h_wv0 ,       &
+         T_ref , c_ice
 
     USE particles_module, ONLY: mom , cpsolid
 
@@ -366,12 +357,12 @@ CONTAINS
     f_(2) = f_(1) * ( u - u_atm )
     f_(3) = f_(1) * w
 
-    mixture_enthalpy = dry_air_mass_fraction * cpair * tp                       &
-         + solid_tot_mass_fraction * cpsolid * tp                               & 
-         + water_vapor_mass_fraction * ( h_wv0 + c_wv * ( tp - T_ref ) )        &
-         + liquid_water_mass_fraction * ( h_lw0 + c_lw * ( tp - T_ref ) )       &
-         + ice_mass_fraction * ( c_ice * tp )       &
-         + volcgas_mix_mass_fraction * cpvolcgas_mix * tp 
+    mixture_enthalpy = dry_air_mass_fraction * cpair * t_mix                    &
+         + solid_tot_mass_fraction * cpsolid * t_mix                            & 
+         + water_vapor_mass_fraction * ( h_wv0 + c_wv * ( t_mix - T_ref ) )     &
+         + liquid_water_mass_fraction * ( h_lw0 + c_lw * ( t_mix - T_ref ) )    &
+         + ice_mass_fraction * ( c_ice * t_mix )                                &
+         + volcgas_mix_mass_fraction * cpvolcgas_mix * t_mix 
 
 
     ! ---- Total energy flow rate
@@ -460,7 +451,7 @@ CONTAINS
 
     USE meteo_module, ONLY: u_atm , rair , pa , cpair , rwv , rho_atm
     
-    USE mixture_module, ONLY: rho_gas , rgasmix , rho_mix , tp ,                &
+    USE mixture_module, ONLY: rho_gas , rgasmix , rho_mix , t_mix ,             &
          gas_volume_fraction , solid_tot_volume_fraction , gas_mass_fraction ,  &
          atm_mass_fraction , rhovolcgas_mix , rvolcgas_mix ,                    &
          volcgas_mass_fraction , volcgas_mix_mass_fraction , cpvolcgas_mix ,    &
@@ -478,7 +469,7 @@ CONTAINS
 
     USE moments_module, ONLY: n_nodes 
 
-    USE variables, ONLY : gi , pi_g , verbose_level
+    USE variables, ONLY : gi , pi_g , verbose_level , aggregation_flag
 
     USE meteo_module, ONLY : zmet
 
@@ -487,7 +478,8 @@ CONTAINS
     USE moments_module, ONLY : moments_correction_wright
     USE moments_module, ONLY : moments_correction, wheeler_algorithm 
  
-    USE particles_module, ONLY : eval_particles_moments 
+    USE particles_module, ONLY : eval_particles_moments
+    USE particles_module, ONLY : eval_aggregation_moments
     USE particles_module, ONLY : particles_density
     
    
@@ -654,10 +646,10 @@ CONTAINS
 
     
     ! --- Compute  water_vapor_mass_fraction, ice_mass_fraction -----------------
-    ! --- and tp from other variables -------------------------------------------
+    ! --- and t_mix from other variables ----------------------------------------
     CALL eval_temp(enth,pa,cpsolid)
 
-    !WRITE(*,*) 'SOLVER_RISE: tp',tp
+    !WRITE(*,*) 'SOLVER_RISE: t_mix',t_mix
     
     ! mass fraction of liquid water in the mixture    
     liquid_water_mass_fraction = water_mass_fraction-water_vapor_mass_fraction  &
@@ -676,12 +668,12 @@ CONTAINS
          + volcgas_mix_mass_fraction ) )
 
     ! density of mixture of dry air + water vapor + other volcanic gases 
-    rho_gas = pa / ( rgasmix * tp )
+    rho_gas = pa / ( rgasmix * t_mix )
 
     ! density of mixture of other volcanic gases (no H2O)
     IF ( n_gas .GT. 0 ) THEN
 
-       rhovolcgas_mix = pa / ( rvolcgas_mix * tp )
+       rhovolcgas_mix = pa / ( rvolcgas_mix * t_mix )
 
     ELSE
 
@@ -692,7 +684,7 @@ CONTAINS
     IF ( verbose_level .GE. 1 ) THEN
 
        WRITE(*,*) '************** UNLUMP ***************'
-       WRITE(*,*) 'pa,tp',pa,tp
+       WRITE(*,*) 'pa,t_mix',pa,t_mix
        WRITE(*,*) 'rgasmix',rgasmix
     
        WRITE(*,*) 'rho_gas,rhovolcgas_mix',rho_gas,rhovolcgas_mix
@@ -820,13 +812,16 @@ CONTAINS
 
     CALL eval_particles_moments( xi , wi )
 
+    IF ( aggregation_flag ) CALL eval_aggregation_moments( xi , wi ,            &
+         liquid_water_mass_fraction , ice_mass_fraction )
+    
     IF ( verbose_level .GE. 1 ) THEN
        
        WRITE(*,*) ''
        WRITE(*,*) '************** UNLUMPED VARIABLES **************'
        WRITE(*,*) 'pres',pa
        WRITE(*,*) 'rgasmix',rgasmix
-       WRITE(*,*) 'tp',tp
+       WRITE(*,*) 't_mix',t_mix
        WRITE(*,*) 'u,w',u,w
        WRITE(*,*) 'r',r
        WRITE(*,*) 'z',z

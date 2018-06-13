@@ -102,9 +102,11 @@ MODULE particles_module
   !> Flag for the aggregation:\n
   !> - 'TRUE'   => aggregation enabled
   !> - 'FALSE'  => aggregation disabled
-  LOGICAL, ALLOCATABLE :: aggregation(:)
+  LOGICAL, ALLOCATABLE :: aggregation_array(:)
 
-
+  !> Array for porosity volume fraction of aggregates
+  REAL*8, ALLOCATABLE :: aggregate_porosity(:)
+  
   !> Aggregation kernel model:\n
   !> - 'constant'   => beta=1
   !> - 'brownian'
@@ -123,7 +125,7 @@ MODULE particles_module
 
   REAL*8, ALLOCATABLE, DIMENSION(:,:,:,:) :: part_beta_array 
 
-  REAL*8 :: temp_part
+  REAL*8 :: t_part
 
 
   SAVE
@@ -170,11 +172,15 @@ CONTAINS
 
     ALLOCATE ( cp_part(n_part) )
 
-    ! Allocation of arrays for aggregation
-    ALLOCATE ( aggregation(n_part) )
-    ALLOCATE ( aggr_idx(n_part) )
+    !Allocation of arrays for quadrature variables
     ALLOCATE ( xi_part(n_part,n_nodes) )
     ALLOCATE ( w_part(n_part,n_nodes) )
+
+    
+    ! Allocation of arrays for aggregation
+    ALLOCATE ( aggregation_array(n_part) )
+    ALLOCATE ( aggregate_porosity(n_part) )
+    ALLOCATE ( aggr_idx(n_part) )
 
     ALLOCATE ( part_dens_array(n_part,n_nodes) )
     ALLOCATE ( part_set_vel_array(n_part,n_nodes) )
@@ -213,11 +219,13 @@ CONTAINS
 
     DEALLOCATE ( cp_part )
 
-    ! Allocation of arrays for aggregation
-    DEALLOCATE ( aggregation )
-    DEALLOCATE ( aggr_idx )
     DEALLOCATE ( xi_part )
     DEALLOCATE ( w_part )
+    
+    ! Allocation of arrays for aggregation
+    DEALLOCATE ( aggregation_array )
+    DEALLOCATE ( aggregate_porosity )
+    DEALLOCATE ( aggr_idx )
 
     DEALLOCATE ( part_dens_array )
     DEALLOCATE ( part_set_vel_array )
@@ -627,7 +635,7 @@ CONTAINS
   !> Mattia de' Michieli Vitturi
   !******************************************************************************
 
-  FUNCTION particles_beta(i_part,j_part,diam_i,diam_j)
+  FUNCTION particles_beta(i_part,j_part,diam_i,diam_j,lw_mf,ice_mf)
     !
     IMPLICIT NONE
 
@@ -637,6 +645,8 @@ CONTAINS
     INTEGER, INTENT(IN) :: j_part
     REAL*8, INTENT(IN) :: diam_i
     REAL*8, INTENT(IN) :: diam_j
+    REAL*8, INTENT(IN) :: lw_mf 
+    REAL*8, INTENT(IN) :: ice_mf 
 
 
 
@@ -663,7 +673,8 @@ CONTAINS
 
     CASE ( 'COSTA')
 
-       particles_beta = aggregation_kernel(i_part,j_part,diam_i,diam_j)
+       particles_beta = aggregation_kernel(i_part,j_part,diam_i,diam_j,lw_mf,   &
+            ice_mf)
 
     END SELECT
 
@@ -698,7 +709,7 @@ CONTAINS
   !> Mattia de' Michieli Vitturi
   !******************************************************************************
 
-  FUNCTION aggregation_kernel(i_part,j_part,diam_i,diam_j)
+  FUNCTION aggregation_kernel(i_part,j_part,diam_i,diam_j,lw_mf,ice_mf)
 
     IMPLICIT NONE
 
@@ -708,6 +719,8 @@ CONTAINS
     INTEGER, INTENT(IN) :: j_part
     REAL*8, INTENT(IN) :: diam_i
     REAL*8, INTENT(IN) :: diam_j
+    REAL*8, INTENT(IN) :: lw_mf 
+    REAL*8, INTENT(IN) :: ice_mf 
 
     REAL*8 :: beta
     REAL*8 :: alfa
@@ -724,7 +737,7 @@ CONTAINS
 
     beta = collision_kernel(i_part,j_part,diam_i,diam_j)
 
-    alfa = coalescence_efficiency(i_part,j_part,diam_i,diam_j)
+    alfa = coalescence_efficiency(i_part,j_part,diam_i,diam_j,lw_mf,ice_mf)
 
     aggregation_kernel = beta * alfa
 
@@ -815,7 +828,7 @@ CONTAINS
     visc_atm = 1.98D-5
 
     ! Eq. 3, first term Costa et al. JGR 2010
-    beta_B = 2.D0 / 3.D0 * k_b * temp_part / visc_atm * ( diam_i + diam_j )**2    &
+    beta_B = 2.D0 / 3.D0 * k_b * t_part / visc_atm * ( diam_i + diam_j )**2     &
          / ( diam_i*diam_j ) 
 
     ! Gamma_s = DSQRT( 1.3D0 * epsilon * air_kin_viscosity )
@@ -953,7 +966,7 @@ CONTAINS
   !> Mattia de' Michieli Vitturi
   !******************************************************************************
 
-  FUNCTION coalescence_efficiency(i_part,j_part,diam_i,diam_j)
+  FUNCTION coalescence_efficiency(i_part,j_part,diam_i,diam_j,lw_mf,ice_mf)
 
     USE variables, ONLY: gi
 
@@ -966,7 +979,11 @@ CONTAINS
 
     REAL*8, INTENT(IN) :: diam_i
     REAL*8, INTENT(IN) :: diam_j
-
+    REAL*8, INTENT(IN) :: lw_mf 
+    REAL*8, INTENT(IN) :: ice_mf 
+    
+    REAL*8 :: coalescence_efficiency_ice , coalescence_efficiency_water
+    
     !> particle Stokes number
     REAL*8 :: Stokes
 
@@ -992,36 +1009,53 @@ CONTAINS
 
     END IF
 
+    ! Eq. 5 Costa et al. JGR 2010
+    coalescence_efficiency_ice = 0.09D0
+    
+    Vs_i = particles_settling_velocity(i_part,diam_i)
+    Vs_j = particles_settling_velocity(j_part,diam_j)
+    
+    rho_i = particles_density(i_part,diam_i)
+    rho_j = particles_density(j_part,diam_j)
+    
+    
+    mu_liq = 5.43D-4
+    
+    ! Eq. 6 Costa et al. JGR 2010 (CHECK DENSITY!)
+    Stokes = 8.d0 * 0.5D0 * ( rho_i + rho_j ) / ( 9.d0 * mu_liq )               &
+         * diam_i * diam_j / ( diam_i + diam_j )
+    
+    Stokes_cr = 1.3D0
+    
+    q = 0.8D0
+    
+    ! Eq. 8 Costa et al. JGR 2010
+    coalescence_efficiency_water = 1.D0 / ( 1.D0 + ( Stokes / Stokes_cr ) ) ** q 
 
-    IF ( temp_part .LE. 273.D0 ) THEN
+    IF ( lw_mf .GT. 0.D0 ) THEN
 
-       ! Eq. 5 Costa et al. JGR 2010
-       coalescence_efficiency = 0.09D0
+       IF ( ice_mf .GT. 0.D0 ) THEN
 
+          coalescence_efficiency = ( lw_mf * coalescence_efficiency_water       &
+               + ice_mf * coalescence_efficiency_ice ) / ( lw_mf + ice_mf )
+
+       ELSE
+       
+          coalescence_efficiency = coalescence_efficiency_water
+
+       END IF
+          
+    ELSEIF ( ice_mf .GT. 0.D0 ) THEN
+
+       coalescence_efficiency = coalescence_efficiency_ice
+          
     ELSE
 
-       Vs_i = particles_settling_velocity(i_part,diam_i)
-       Vs_j = particles_settling_velocity(j_part,diam_j)
-
-       rho_i = particles_density(i_part,diam_i)
-       rho_j = particles_density(j_part,diam_j)
-
-
-       mu_liq = 5.43D-4
-
-       ! Eq. 6 Costa et al. JGR 2010 (CHECK DENSITY!)
-       Stokes = 8.d0 * 0.5D0 * ( rho_i + rho_j ) / ( 9.d0 * mu_liq )            &
-            * diam_i * diam_j / ( diam_i + diam_j )
-
-       Stokes_cr = 1.3D0
-
-       q = 0.8D0
-
-       ! Eq. 8 Costa et al. JGR 2010
-       coalescence_efficiency = 1.D0 / ( 1.D0 + ( Stokes / Stokes_cr ) ) ** q 
+       coalescence_efficiency = 0.D0
 
     END IF
-
+          
+    
     IF ( verbose_level .GE. 2 ) THEN
 
        WRITE(*,FMT) ' ','END coalescence_efficiency'
@@ -1101,43 +1135,6 @@ CONTAINS
 
     END DO
 
-
-    DO i_part=1,n_part_org
-
-       DO j1_node=1,n_nodes
-
-          IF ( aggregation(i_part) ) THEN
-
-             j_part = aggr_idx(i_part)
-
-             DO j2_node=1,n_nodes
-
-                diam_i_j1 =  1.D-3 * 2.D0 ** ( -xi(i_part,j1_node) )
-                diam_i_j2 =  1.D-3 * 2.D0 ** ( -xi(i_part,j2_node) )
-                diam_j_j1 =  1.D-3 * 2.D0 ** ( -xi(j_part,j1_node) )
-                diam_j_j2 =  1.D-3 * 2.D0 ** ( -xi(j_part,j2_node) )
-
-                part_beta_array(i_part,i_part,j1_node,j2_node) = particles_beta( &
-                     i_part , i_part , diam_i_j1 , diam_i_j2 )
-
-                part_beta_array(i_part,j_part,j1_node,j2_node) = particles_beta( &
-                     i_part , j_part , diam_i_j1 , diam_j_j2 )
-
-                part_beta_array(j_part,i_part,j1_node,j2_node) = particles_beta( &
-                     j_part , i_part , diam_j_j1 , diam_i_j2 )
-
-                part_beta_array(j_part,j_part,j1_node,j2_node) = particles_beta( &
-                     j_part , j_part , diam_j_j1 , diam_j_j2 )
-
-             END DO
-
-          END IF
-
-       END DO
-
-    END DO
-
-
     DO i_part=1,n_part
 
        DO i=0,n_mom-1
@@ -1182,7 +1179,112 @@ CONTAINS
 
        END DO
 
-       IF ( ( aggregation(i_part) ) .AND. ( i_part .LE. n_part_org) ) THEN
+    END DO
+
+
+    RETURN
+
+  END SUBROUTINE eval_particles_moments
+
+  !******************************************************************************
+  !> \brief Particles moments computation
+  !
+  !> This subroutine compute the moments of the particles properties (density,
+  !> heat capacity and settling velocity) using the quadrature formulas.
+  !> \param[in]   xi     abscissas for the quadrature
+  !> \param[out]  w      weights for the quadrature
+  !> \date 22/10/2013
+  !> @author 
+  !> Mattia de' Michieli Vitturi
+  !******************************************************************************
+
+  SUBROUTINE eval_aggregation_moments( xi , w , lw_mf , ice_mf )
+
+    ! external variables
+    USE variables, ONLY : verbose_level
+    USE variables, ONLY : pi_g
+
+    ! external procedures
+    USE meteo_module, ONLY : zmet
+
+    IMPLICIT NONE
+
+    REAL*8, DIMENSION(n_part,n_nodes), INTENT(IN) :: xi
+    REAL*8, DIMENSION(n_part,n_nodes), INTENT(IN) :: w
+    REAL*8, INTENT(IN) :: lw_mf
+    REAL*8, INTENT(IN) :: ice_mf
+
+    INTEGER :: j_node , j1_node , j2_node
+
+    INTEGER :: i , j , j1 , j2
+    INTEGER :: i_part , j_part
+
+    INTEGER :: i_mom
+    
+    REAL*8 :: diam_i_j1 , diam_i_j2
+    REAL*8 :: diam_j_j1 , diam_j_j2
+
+    CALL zmet
+
+    DO i_part=1,n_part
+
+       DO j=1,n_nodes
+
+          part_dens_array(i_part,j) = particles_density( i_part , xi(i_part,j) )
+
+       END DO
+
+       IF ( verbose_level .GE. 2 ) THEN
+
+          WRITE(*,*) 'i_part',i_part
+          WRITE(*,*) 'abscissas', xi(i_part,1:n_nodes)
+          WRITE(*,*) 'weights', w(i_part,1:n_nodes)
+          WRITE(*,*) 'part_dens_array',part_dens_array(i_part,:)
+
+       END IF
+
+    END DO
+
+
+    DO i_part=1,n_part_org
+
+       DO j1_node=1,n_nodes
+
+          IF ( aggregation_array(i_part) ) THEN
+
+             j_part = aggr_idx(i_part)
+
+             DO j2_node=1,n_nodes
+
+                diam_i_j1 =  1.D-3 * 2.D0 ** ( -xi(i_part,j1_node) )
+                diam_i_j2 =  1.D-3 * 2.D0 ** ( -xi(i_part,j2_node) )
+                diam_j_j1 =  1.D-3 * 2.D0 ** ( -xi(j_part,j1_node) )
+                diam_j_j2 =  1.D-3 * 2.D0 ** ( -xi(j_part,j2_node) )
+
+                part_beta_array(i_part,i_part,j1_node,j2_node) = particles_beta( &
+                     i_part , i_part , diam_i_j1 , diam_i_j2 , lw_mf , ice_mf )
+
+                part_beta_array(i_part,j_part,j1_node,j2_node) = particles_beta( &
+                     i_part , j_part , diam_i_j1 , diam_j_j2 , lw_mf , ice_mf )
+
+                part_beta_array(j_part,i_part,j1_node,j2_node) = particles_beta( &
+                     j_part , i_part , diam_j_j1 , diam_i_j2 , lw_mf , ice_mf )
+
+                part_beta_array(j_part,j_part,j1_node,j2_node) = particles_beta( &
+                     j_part , j_part , diam_j_j1 , diam_j_j2 , lw_mf , ice_mf )
+
+             END DO
+
+          END IF
+
+       END DO
+
+    END DO
+
+
+    DO i_part=1,n_part
+
+       IF ( ( aggregation_array(i_part) ) .AND. ( i_part .LE. n_part_org) ) THEN
 
           ! index of the aggregates family for the family i_part
           j_part = aggr_idx(i_part)
@@ -1308,7 +1410,8 @@ CONTAINS
 
     RETURN
 
-  END SUBROUTINE eval_particles_moments
+  END SUBROUTINE eval_aggregation_moments
 
+  
 END MODULE particles_module
 
