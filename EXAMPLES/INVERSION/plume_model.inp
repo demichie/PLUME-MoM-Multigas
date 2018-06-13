@@ -50,7 +50,7 @@
  N_PART=          1,
  N_GAS=          2,
  DISTRIBUTION="lognormal           ",
- DISTRIBUTION_VARIABLE="particles_number",
+ DISTRIBUTION_VARIABLE="mass_fraction",
  N_MOM=          6,
  /
 &MIXTURE_PARAMETERS
