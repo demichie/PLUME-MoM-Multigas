@@ -1220,10 +1220,6 @@ CONTAINS
 
        READ(inp_unit, aggregation_parameters,IOSTAT=ios)
 
-       aggregation_model = lower(aggregation_model)
-       
-       WRITE(bak_unit, aggregation_parameters)
-
        IF ( ios .NE. 0 ) THEN
           
           WRITE(*,*) 'IOSTAT=',ios
@@ -1251,6 +1247,11 @@ CONTAINS
        aggregation_array(1:n_part) = .FALSE.
        READ(inp_unit, aggregation_parameters)
 
+       aggregation_model = lower(aggregation_model)
+
+       WRITE(bak_unit, aggregation_parameters)
+
+       
        ! WRITE(*,*) size(aggregation_array)
        ! WRITE(*,*) 'aggr_org',COUNT(aggregation_array(1:n_part))
                   

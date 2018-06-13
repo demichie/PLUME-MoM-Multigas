@@ -647,9 +647,9 @@ CONTAINS
     REAL*8, INTENT(IN) :: diam_j
     REAL*8, INTENT(IN) :: lw_mf 
     REAL*8, INTENT(IN) :: ice_mf 
-    
-    SELECT CASE ( aggregation_model )
 
+    SELECT CASE ( aggregation_model )
+       
     CASE DEFAULT
 
        particles_beta = 0.D0
@@ -667,7 +667,7 @@ CONTAINS
        particles_beta =  diam_i**3 + diam_j**3
 
     CASE ( 'costa')
-       
+
        particles_beta = aggregation_kernel(i_part,j_part,diam_i,diam_j,lw_mf,   &
             ice_mf)
 
