@@ -29,7 +29,7 @@
 &INITIAL_VALUES
  LOG10_MFR = {log10_mfr}     ,
  W0 = {vent_velocity} ,
- TP0=  1300.0000000000000     ,
+ T_MIX0=  1300.0000000000000     ,
  INITIAL_NEUTRAL_DENSITY=F,
  WATER_MASS_FRACTION0=  {water_mass_fraction0},
  VENT_HEIGHT=  {vent_height}     ,
