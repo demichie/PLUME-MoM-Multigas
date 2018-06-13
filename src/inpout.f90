@@ -1202,6 +1202,16 @@ CONTAINS
     ! ----- AGGREGATION
     IF ( aggregation_flag ) THEN
 
+       IF ( .not.WATER_FLAG ) THEN
+
+          WRITE(*,*) ''
+          WRITE(*,*) 'ERROR: only wet aggregation is possible'
+          WRITE(*,*) 'WATER FLAG =',WATER_FLAG
+          
+          STOP
+
+       END IF
+
        n_part_org = n_part
 
        READ(inp_unit, aggregation_parameters,IOSTAT=ios)
@@ -2224,19 +2234,19 @@ CONTAINS
        
        WRITE(col_unit,100)
        
-97     FORMAT(1x,'     z (m)     ',1x,'       r (m)    ',1x,'      x (m)    ',  &
-            1x,'     y (m)     ',1x,'mix.dens(kg/m3)',1x,'temperature(C)',      &
-            1x,' vert vel (m/s)',1x,' mag vel (m/s) ',1x,' d.a. massfract',     &
-            1x,' w.v. massfract',1x,' l.w. massfract',1x' i. massfract',1x)
+97     FORMAT(1x,'     z(m)      ',1x,'       r(m)     ',1x,'      x(m)     ',  &
+            1x,'     y(m)      ',1x,'mix.dens(kg/m3)',1x,'temperature(C)',      &
+            1x,' vert.vel.(m/s)',1x,' mag.vel.(m/s) ',1x,' d.a.massfract ',     &
+            1x,' w.v.massfract ',1x,' l.w.massfract ',1x' i.massfract ',1x)
 
 
-98     FORMAT(1x,'sol massfract ')
-198    FORMAT(1x,'agr massfract ')
+98     FORMAT(1x,'sol.massfract ')
+198    FORMAT(1x,'agr.massfract ')
 
-99     FORMAT(1x,'  volgas massf ')
+99     FORMAT(1x,'  volgas.massf ')
        
-100     FORMAT(1x,' volgasmix.massf',1x,'atm.rho(kg/m3)',1x,' MFR (kg/s)     ', &
-             1x,'atm.temp (K)  ', 1x,' atm pres (Pa) ')
+100     FORMAT(1x,' volgasmix.massf',1x,'atm.rho(kg/m3)',1x,' MFR(kg/s)      ', &
+             1x,'atm.temp(K)   ', 1x,' atm.pres.(Pa) ')
        
 
     END IF
@@ -2251,7 +2261,7 @@ CONTAINS
     
     DO i_part=1,n_part_org
 
-       WRITE(col_unit,101,advance="no") solid_partial_mass_fraction(i_part)
+       WRITE(col_unit,102,advance="no") solid_partial_mass_fraction(i_part)
 
        IF ( aggregation_array(i_part) ) THEN
 
