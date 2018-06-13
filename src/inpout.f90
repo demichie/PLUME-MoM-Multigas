@@ -2193,7 +2193,7 @@ CONTAINS
 
     REAL*8 :: mfr
 
-    INTEGER :: i_part
+    INTEGER :: i_part , j_part
 
     INTEGER :: i_gas
 
@@ -2208,9 +2208,11 @@ CONTAINS
 
        WRITE(col_unit,97,advance="no")
        
-       DO i_part=1,n_part
+       DO i_part=1,n_part_org
           
           WRITE(col_unit,98,advance="no")
+
+          IF ( aggregation_array(i_part) ) WRITE(col_unit,198,advance="no")
           
        END DO
 
@@ -2229,6 +2231,7 @@ CONTAINS
 
 
 98     FORMAT(1x,'sol massfract ')
+198    FORMAT(1x,'agr massfract ')
 
 99     FORMAT(1x,'  volgas massf ')
        
@@ -2240,16 +2243,36 @@ CONTAINS
 
     col_lines = col_lines + 1
 
-    WRITE(col_unit,101) z , r , x , y , rho_mix , t_mix - 273.15D0 , w , mag_u, &
-         dry_air_mass_fraction , water_vapor_mass_fraction ,                    & 
-         liquid_water_mass_fraction , ice_mass_fraction ,                       &
-         solid_partial_mass_fraction(1:n_part) , volcgas_mass_fraction(1:n_gas),& 
+    WRITE(col_unit,101,advance="no") z , r , x , y , rho_mix , t_mix-273.15D0 , &
+         w , mag_u, dry_air_mass_fraction , water_vapor_mass_fraction ,         & 
+         liquid_water_mass_fraction , ice_mass_fraction
+
+101 FORMAT(12(1x,es15.8))
+    
+    DO i_part=1,n_part_org
+
+       WRITE(col_unit,101,advance="no") solid_partial_mass_fraction(i_part)
+
+       IF ( aggregation_array(i_part) ) THEN
+
+          j_part = aggr_idx(i_part)
+
+          WRITE(col_unit,102,advance="no") solid_partial_mass_fraction(j_part)
+
+       END IF
+          
+    END DO
+
+102 FORMAT(1(1x,es15.8))
+
+    
+    WRITE(col_unit,103) volcgas_mass_fraction(1:n_gas) ,                        &
          volcgas_mix_mass_fraction , rho_atm , mfr , ta, pa
 
+103 FORMAT(20(1x,es15.8))
 
     WRITE(mom_unit,*) z , mom(1:n_part,0:n_mom-1),set_mom(1:n_part,0)
 
-101 FORMAT(33(1x,es15.8))
     
     IF ( verbose_level .GE. 1 ) THEN
        
