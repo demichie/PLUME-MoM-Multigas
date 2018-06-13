@@ -1100,6 +1100,10 @@ CONTAINS
 
     READ(inp_unit, initial_values)
 
+    distribution = lower(distribution)
+    distribution_variable = lower(distribution_variable)
+    
+    
     ALLOCATE ( rvolcgas(n_gas),cpvolcgas(n_gas),volcgas_mass_fraction(n_gas) ,  &
          volcgas_mol_wt(n_gas) , rhovolcgas(n_gas) ,                            &
          volcgas_mass_fraction0(n_gas))
@@ -1215,6 +1219,9 @@ CONTAINS
        n_part_org = n_part
 
        READ(inp_unit, aggregation_parameters,IOSTAT=ios)
+
+       aggregation_model = lower(aggregation_model)
+       
        WRITE(bak_unit, aggregation_parameters)
 
        IF ( ios .NE. 0 ) THEN
@@ -2920,5 +2927,26 @@ CONTAINS
   END FUNCTION cross
 
 
+  FUNCTION lower( string ) result (new) 
+    character(len=*)           :: string 
+
+    character(len=len(string)) :: new 
+
+    integer                    :: i 
+    integer                    :: k 
+    INTEGER :: length
+
+    length = len(string) 
+    new    = string 
+    do i = 1,len(string) 
+       k = iachar(string(i:i)) 
+       if ( k >= iachar('A') .and. k <= iachar('Z') ) then 
+          k = k + iachar('a') - iachar('A') 
+          new(i:i) = achar(k) 
+       endif
+    enddo
+  end function lower
+
+  
   
 END MODULE inpout

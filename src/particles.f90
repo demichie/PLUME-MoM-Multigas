@@ -636,7 +636,7 @@ CONTAINS
   !******************************************************************************
 
   FUNCTION particles_beta(i_part,j_part,diam_i,diam_j,lw_mf,ice_mf)
-    !
+
     IMPLICIT NONE
 
     REAL*8 :: particles_beta
@@ -647,32 +647,27 @@ CONTAINS
     REAL*8, INTENT(IN) :: diam_j
     REAL*8, INTENT(IN) :: lw_mf 
     REAL*8, INTENT(IN) :: ice_mf 
-
-
-
-    !aggregation_model = 'CONSTANT'
-    !aggregation_model = 'COSTA'
-
+    
     SELECT CASE ( aggregation_model )
 
     CASE DEFAULT
 
        particles_beta = 0.D0
 
-    CASE ( 'CONSTANT' )
+    CASE ( 'constant' )
 
        particles_beta = 1.D-10
 
-    CASE ( 'BROWNIAN' )
+    CASE ( 'brownian' )
 
        particles_beta = ( diam_i + diam_j ) ** 2 / ( diam_i + diam_j ) 
 
-    CASE ( 'SUM' )
+    CASE ( 'sum' )
 
        particles_beta =  diam_i**3 + diam_j**3
 
-    CASE ( 'COSTA')
-
+    CASE ( 'costa')
+       
        particles_beta = aggregation_kernel(i_part,j_part,diam_i,diam_j,lw_mf,   &
             ice_mf)
 
@@ -1224,8 +1219,22 @@ CONTAINS
     REAL*8 :: diam_i_j1 , diam_i_j2
     REAL*8 :: diam_j_j1 , diam_j_j2
 
-    CALL zmet
+    IF ( lw_mf + ice_mf .EQ. 0.D0 ) THEN
+    
+       ! total birth rate moments for the i_part family (original - org)
+       birth_mom(i_part,i_mom) = 0.D0
+       ! total death rate moments for the i_part family (original - org)
+       death_mom(i_part,i_mom) = 0.D0
+       
+       ! total birth rate moments for the j_part family (nonOrg)
+       birth_mom(j_part,i_mom) = 0.D0
+       ! total death rate moments for the j_part family (nonOrg)
+       death_mom(j_part,i_mom) = 0.D0
 
+       RETURN
+
+    END IF
+       
     DO i_part=1,n_part
 
        DO j=1,n_nodes
@@ -1392,10 +1401,12 @@ CONTAINS
 
                 WRITE(*,*) 'birth',i_part,i_mom,birth_mom(i_part,i_mom)
                 WRITE(*,*) 'death',i_part,i_mom,death_mom(i_part,i_mom)
-                WRITE(*,*) 'sum  ',i_part,i_mom,death_mom(i_part,i_mom)-birth_mom(i_part,i_mom)
+                WRITE(*,*) 'sum  ',i_part,i_mom,death_mom(i_part,i_mom)         &
+                     - birth_mom(i_part,i_mom)
                 WRITE(*,*) 'birth',j_part,i_mom,birth_mom(j_part,i_mom)
                 WRITE(*,*) 'death',j_part,i_mom,death_mom(j_part,i_mom)
-                WRITE(*,*) 'sum  ',j_part,i_mom,death_mom(j_part,i_mom)-birth_mom(j_part,i_mom)
+                WRITE(*,*) 'sum  ',j_part,i_mom,death_mom(j_part,i_mom)         &
+                     - birth_mom(j_part,i_mom)
                 READ(*,*)
 
              END IF

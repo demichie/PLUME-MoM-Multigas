@@ -59,5 +59,6 @@ MODULE variables
 
   CHARACTER(LEN=40) FMT
 
+  SAVE
   
 END MODULE variables
