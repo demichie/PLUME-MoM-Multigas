@@ -262,7 +262,9 @@ CONTAINS
          + water_vapor_mass_fraction * ( h_wv0 + c_wv * ( t_mix0 - T_ref ) )    &
          + volcgas_mix_mass_fraction * cpvolcgas_mix * t_mix0
 
-    WRITE(*,*) 'Original specific enthalpy at vent =',enth_at_vent
+
+    IF ( write_flag ) WRITE(*,*) 'Original specific enthalpy at vent =',enth_at_vent
+
 
     !------ Corrections of mass fractions and moments for the added water -------
     erupted_mass_fraction = 1.D0 - added_water_mass_fraction
@@ -486,7 +488,8 @@ CONTAINS
 
        mass_flow_rate = 10.0**log10_mfr
 
-       WRITE(*,*) 'Fixed MER [kg/s] =',mass_flow_rate
+       
+       IF ( write_flag ) WRITE(*,*) 'Fixed MER [kg/s] =',mass_flow_rate
 
        IF ( r0 .EQ. -1.D0 ) THEN
 
@@ -859,7 +862,7 @@ CONTAINS
 
        t_mix = temp0
 
-       WRITE(*,*) 'all liquid, t_mix:',t_mix
+       !WRITE(*,*) 'all liquid, t_mix:',t_mix
 
        IF ( t_mix .GT. T_ref ) RETURN
 

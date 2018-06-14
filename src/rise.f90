@@ -456,10 +456,13 @@ CONTAINS
        
     END DO main_loop
 
-    WRITE(*,*)
-    WRITE(*,*) '---------- MODEL RESULTS ----------'
-    WRITE(*,*)
+    IF ( write_flag) THEN
 
+        WRITE(*,*)
+        WRITE(*,*) '---------- MODEL RESULTS ----------'
+        WRITE(*,*)
+
+    END IF
     
     max_idx = idx
 

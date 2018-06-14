@@ -467,11 +467,16 @@ CONTAINS
     NAMELIST / constant_parameters / solid_partial_mass_fraction ,              &
          diam_constant_phi
 
-    WRITE(*,*) 
-    WRITE(*,*) 'PlumeMoM (by M. de'' Michieli Vitturi)'
-    WRITE(*,*) 
-    WRITE(*,*) '*** Starting the run ***' 
-    WRITE(*,*)
+    
+    IF ( write_flag ) THEN
+
+        WRITE(*,*) 
+        WRITE(*,*) 'PlumeMoM (by M. de'' Michieli Vitturi)'
+        WRITE(*,*) 
+        WRITE(*,*) '*** Starting the run ***' 
+        WRITE(*,*)
+
+    END IF
 
     n_unit = n_unit + 1
 
@@ -1122,7 +1127,8 @@ CONTAINS
        ELSE
 
           log10_mfr = log10(mfr0)
-          WRITE(*,*) 'LOG10 mass eruption rate =',log10_mfr
+            
+          IF ( write_flag ) WRITE(*,*) 'LOG10 mass eruption rate =',log10_mfr
 
        END IF
 
@@ -1131,7 +1137,7 @@ CONTAINS
     IF ( ( log10_mfr .LT. 0.d0 ) .AND. ( r0 .EQ. 0.d0 ) .AND.                   &
          ( w0 .GT. 0.D0 ) ) THEN
        
-       WRITE(*,*) 'WARNING: initial radius calculated from MER and velocity'
+       IF ( write_flag ) WRITE(*,*) 'WARNING: initial radius calculated from MER and velocity'
 
     END IF
 
@@ -1174,28 +1180,28 @@ CONTAINS
           
     END IF
  
-    IF ( hysplit_flag ) THEN
+    !IF ( hysplit_flag ) THEN
 
-       IF (  distribution .NE. 'constant' ) THEN
+    !   IF (  distribution .NE. 'constant' ) THEN
 
-          WRITE(*,*) 'hysplit run requires constant distribution'
-          STOP
+    !      WRITE(*,*) 'hysplit run requires constant distribution'
+    !      STOP
           
-       ELSE
+    !   ELSE
           
-          READ(inp_unit, hysplit_parameters)
-          WRITE(bak_unit, hysplit_parameters)
+    !      READ(inp_unit, hysplit_parameters)
+    !      WRITE(bak_unit, hysplit_parameters)
           
-          ALLOCATE( solid_mfr(n_part) , solid_mfr_old(n_part) )
+    !      ALLOCATE( solid_mfr(n_part) , solid_mfr_old(n_part) )
           
-          hy_z = vent_height + hy_deltaz
-          hy_z_old = vent_height
-          hy_x_old = 0.D0
-          hy_y_old = 0.D0
+    !      hy_z = vent_height + hy_deltaz
+    !      hy_z_old = vent_height
+    !      hy_x_old = 0.D0
+    !      hy_y_old = 0.D0
           
-       END IF
+    !   END IF
        
-    END IF
+    !END IF
 
     z = vent_height
 
@@ -1259,6 +1265,29 @@ CONTAINS
 
        ! WRITE(*,*) 'aggr_tot',COUNT(aggregation_array(1:n_part))
 
+    END IF
+
+    IF ( hysplit_flag ) THEN
+
+       IF (  distribution .NE. 'constant' ) THEN
+
+          WRITE(*,*) 'hysplit run requires constant distribution'
+          STOP
+          
+       ELSE
+          
+          READ(inp_unit, hysplit_parameters)
+          WRITE(bak_unit, hysplit_parameters)
+          
+          ALLOCATE( solid_mfr(n_part) , solid_mfr_old(n_part) )
+          
+          hy_z = vent_height + hy_deltaz
+          hy_z_old = vent_height
+          hy_x_old = 0.D0
+          hy_y_old = 0.D0
+          
+       END IF
+       
     END IF
        
     ! ---------
@@ -1501,6 +1530,12 @@ CONTAINS
           IF ( aggregation_array(i_part) ) THEN
              
              i_aggr = i_aggr + 1
+
+             solid_partial_mass_fraction( n_part_org + i_aggr ) = 0.0001D0      &
+                  * solid_partial_mass_fraction(i_part)
+
+             solid_partial_mass_fraction( i_part ) = 0.9999D0                   &
+                  * solid_partial_mass_fraction(i_part)
              
              diam_constant_phi( n_part_org + i_aggr ) = diam_constant_phi(i_part)
              
@@ -1579,6 +1614,7 @@ CONTAINS
              ELSEIF ( distribution .EQ. 'constant' ) THEN
 
                 mom0(i_part,i) = diam_constant_phi(i_part)**i
+                
 
              END IF
 
@@ -2211,7 +2247,7 @@ CONTAINS
 
     REAL*8 :: mfr
 
-    INTEGER :: i_part , j_part
+    INTEGER :: i_part , j_part , i_mom
 
     INTEGER :: i_gas
 
@@ -2289,8 +2325,33 @@ CONTAINS
 
 103 FORMAT(20(1x,es15.8))
 
-    WRITE(mom_unit,*) z , mom(1:n_part,0:n_mom-1),set_mom(1:n_part,0)
+    !WRITE(mom_unit,*) z , mom(1:n_part,0:n_mom-1),set_mom(1:n_part,0)
 
+    WRITE(mom_unit,104,advance="no") z
+
+104 FORMAT(1(1x,es15.8))
+
+   DO i_mom=0,n_mom-1
+
+       DO i_part=1,n_part_org
+  
+           WRITE(mom_unit,105,advance="no")  mom(i_part,i_mom)
+
+           IF ( aggregation_array(i_part) ) THEN
+
+               j_part = aggr_idx(i_part)
+
+               WRITE(mom_unit,105,advance="no") mom(j_part,i_mom)
+
+           END IF
+
+       END DO
+
+   END DO
+
+105 FORMAT(1(1x,es15.8))
+
+    WRITE(mom_unit,*) " "
     
     IF ( verbose_level .GE. 1 ) THEN
        
@@ -2452,6 +2513,7 @@ CONTAINS
             *rho_mix * pi_g * r_col(i)**2 * mag_u 
 
        !WRITE(*,*) 'Solid mass in the column (kg): ',solid_mass_flux(1:n_part,i)
+       !WRITE(*,*) 'solid_pmf: ',solid_pmf(1:n_part,i)
 
        ! WRITE(*,*) z_col(i) , solid_mass_loss_cum(1:n_part,i)
        ! READ(*,*)
@@ -2517,14 +2579,23 @@ CONTAINS
           
           delta_solid(j) = solid_bot - solid_top
 
+          !WRITE(*,*) ' solid_mass_flux(j,:) ',solid_mass_flux(j,:)
+          !!WRITE(*,*) ' j ',j 
+          !WRITE(*,*) ' solid_bot ',solid_bot
+          !WRITE(*,*) ' solid_top ',solid_top
+          !WRITE(*,*) ' delta_solid(j) ',delta_solid(j)
+
+
        END DO
 
        IF ( n_cloud .EQ. 1 ) THEN
           
-          IF ( verbose_level .GE. 1 ) THEN
+          IF ( verbose_level .GE. 0 ) THEN
              
-             WRITE(*,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top+y_bot ) , &
-                  0.5D0 * ( z_top + z_bot ) , delta_solid(1:n_part)
+             !WRITE(*,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top+y_bot ) , &
+              !    0.5D0 * ( z_top + z_bot ) , delta_solid(1:n_part)
+
+             !READ(*,*)
              
           END IF
           
