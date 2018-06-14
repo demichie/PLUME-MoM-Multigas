@@ -5,41 +5,75 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from matplotlib.pyplot import cm 
 from mpl_toolkits.mplot3d import Axes3D
 import easygui
 
-filename = easygui.fileopenbox( filetypes=['*.bak'])
-
-#pathname = os.getcwd()
-#root = Tkinter.Tk()
-#root.withdraw()
-#filename= tkFileDialog.askopenfilename(filetypes=[('Pick a file','*.bak')])
-
-#      z (m)             r (m)           x (m)          y (m)      mix.dens(kg/m3) temperature(C)  vert vel (m/s)  mag vel (m/s)   d.a. massfract  w.v. massfract  l.w. massfract  i. massfract  sol massfract  sol massfract   volgasmix.massf atm.rho(kg/m3)  MFR (kg/s)      atm.temp (K)    atm pres (Pa) 
+filename = easygui.fileopenbox( filetypes=['*.col'])
 
 filename = filename.split('/')[-1]
-filename = re.sub('\.bak$', '', filename)
+filename = re.sub('\.col$', '', filename)
 
-#filename='test_weak'
-prova_bak = open("%s.bak" % filename, "r")
-findpart = 'N_PART'
-for num, line in enumerate(prova_bak, 1):
-        if findpart in line:
-            n_part = int(line[8:-2])
-prova_bak.close()
+class smf_array:
+  pass
 
 
-prova_bak = open("%s.bak" % filename, "r")
-findgas = 'N_GAS'
-for num, line in enumerate(prova_bak, 1):
-        if findgas in line:
-            n_gas = int(line[7:-2])
-prova_bak.close()
+d1={}
 
-var = "%s" % filename
-module = __import__(var)
+with open("%s.col" % filename, "r") as file1:
+    line=file1.readlines()
+    header_line=line[0]
+    header_split = header_line.split()
+    n_part_org = 0
+    n_part_agg = 0
+    n_gas = 0
 
-prova = np.loadtxt("%s.col" % filename, skiprows = 1)
+
+    for i in range(len(header_split)-1):
+
+
+        d1["smf{0}".format(i)] = smf_array() 
+
+
+
+        if header_split[i] == "sol.massfract":
+             
+            
+
+            n_part_org = n_part_org +1
+            
+             
+            d1["smf{0}".format(n_part_org)].org = n_part_org 
+
+            d1["smf{0}".format(n_part_org)].column_org = i
+       
+
+            if header_split[i+1] == "agr.massfract":
+                n_part_agg = n_part_agg + 1
+
+                d1["smf{0}".format(n_part_org)].agg = n_part_agg
+                d1["smf{0}".format(n_part_org)].column_agg = i+1
+
+            else:
+
+                d1["smf{0}".format(n_part_org)].agg = 0
+
+        elif header_split[i] == "volgas.massf":
+             n_gas = n_gas + 1
+
+       
+
+print 'number of original particles ', n_part_org
+print 'number of aggregates ',n_part_agg
+print 'number of volcanic gases ',n_gas
+
+
+
+n_part = n_part_org + n_part_agg
+
+
+
+results = np.loadtxt("%s.col" % filename, skiprows = 1)
 
 file_moments = open("%s.mom" % filename, "r")
 moments = file_moments.readlines()
@@ -53,51 +87,43 @@ f.close()
 
 moments=np.asarray(moments)
 
+print 'number of moments ',n_mom
+
+
 a=[]
 
 for i in range(moments.shape[0]):
     a.append(moments[i].split())
 
 a=np.asarray(a)
-moments=a.reshape((-1,int(n_part*(n_mom+1)+1)))
+a=a[:,1:]
+
+
+moments = a.reshape((results.shape[0],n_mom,n_part))
+
+
+
 
 z_levels = moments.shape[0]
+results=results.reshape((z_levels,-1))
 
-prova=prova.reshape((z_levels,-1))
 
-if n_mom > 1:
-    moments = moments[:,1:]
-    if n_part == 1:
-        moments0 = np.zeros((moments.shape[0],n_mom+1))
-        moments0[:,:] = moments[:,:]
-        moments=moments0
-    else:
-        moments0 = np.zeros((moments.shape[0],n_part,n_mom+1))
 
-        for j in range(n_mom+1):
-            for i in range(n_part):
-                moments0[:,:,j] = moments[:,:n_part]
-            moments=np.delete(moments, 0, 1)   
-            moments=np.delete(moments, 0, 1)  
-        moments=moments0
-else:
-    moments=moments[:,1:]
 
-moments = np.asarray(moments)
 
-z = prova[:,0]/float(1000)
-r_mt = prova[:,1]
-r = prova[:,1]/float(1000)
-x = prova[:,2]/float(1000)
-y = prova[:,3]/float(1000)
-rho_mix = prova[:,4]
-temp = prova[:,5]
-w = prova[:,6]
-mag_u = prova[:,7]
-dry_air_mass_fraction = prova[:,8]
-wvapour_mass_fraction = prova[:,9]
-liquid_water_mass_fraction = prova[:,10]
-ice_mass_fraction = prova[:,11]
+z = results[:,0]/float(1000)
+r_mt = results[:,1]
+r = results[:,1]/float(1000)
+x = results[:,2]/float(1000)
+y = results[:,3]/float(1000)
+rho_mix = results[:,4]
+temp = results[:,5]
+w = results[:,6]
+mag_u = results[:,7]
+dry_air_mass_fraction = results[:,8]
+wvapour_mass_fraction = results[:,9]
+liquid_water_mass_fraction = results[:,10]
+ice_mass_fraction = results[:,11]
 
 z=z.reshape((-1,1))
 r_mt = r_mt.reshape((-1,1))
@@ -112,48 +138,77 @@ dry_air_mass_fraction = dry_air_mass_fraction.reshape((-1,1))
 wvapour_mass_fraction = wvapour_mass_fraction.reshape((-1,1))
 liquid_water_mass_fraction = liquid_water_mass_fraction.reshape((-1,1))
 ice_mass_fraction = ice_mass_fraction.reshape((-1,1))
-solid_partial_mass_fraction = np.zeros((prova.shape[0],n_part))
 
-for i in range(n_part):
 
-    solid_partial_mass_fraction[:,i] = prova[:,12+i]
+
+solid_partial_mass_fraction_org = np.zeros((results.shape[0],n_part_org))
+solid_partial_mass_fraction_agg = np.zeros((results.shape[0],n_part_org))
+
+
+for i in range(n_part_org):
+    solid_partial_mass_fraction_org[:,i] = results[:,d1["smf"+str(i+1)].column_org]
+
+    if d1["smf"+str(i+1)].agg != 0:
+        solid_partial_mass_fraction_agg[:,i] = results[:,d1["smf"+str(i+1)].column_agg]
+        
+
+
 
 if n_gas == 0:
 
-    volcgas_mass_fraction = np.zeros((prova.shape[0],1))
-    volcgas_mix_mass_fraction = np.zeros((prova.shape[0],1))
+    volcgas_mass_fraction = np.zeros((results.shape[0],1))
+    volcgas_mix_mass_fraction = np.zeros((results.shape[0],1))
 
 else:
 
-    volcgas_mass_fraction = np.zeros((prova.shape[0],n_gas))
+    volcgas_mass_fraction = np.zeros((results.shape[0],n_gas))
+
     for i in range(n_gas):
-        volcgas_mass_fraction[:,i] = prova[:,12+n_part+i]
 
-    volcgas_mix_mass_fraction = prova[:,12+n_part+n_gas]
+        volcgas_mass_fraction[:,i] = results[:,12+n_part+i]
+
+    volcgas_mix_mass_fraction = results[:,12+n_part+n_gas]
+
+#print volcgas_mass_fraction
+
+volcgas_mass_fraction_tot = np.sum(volcgas_mass_fraction, axis = 1)
+volcgas_mass_fraction_tot=volcgas_mass_fraction_tot.reshape((-1,1))
+
+gas_mass_fraction = np.zeros((results.shape[0],1))
+
+for i in range(gas_mass_fraction.shape[0]):
+    gas_mass_fraction[i,0] = dry_air_mass_fraction[i,0] + wvapour_mass_fraction[i,0] + volcgas_mass_fraction_tot[i,0] 
 
 
-gas_mass_fraction = dry_air_mass_fraction + wvapour_mass_fraction + volcgas_mass_fraction 
+solid_mass_fraction_org = np.zeros((results.shape[0],n_part_org))
+solid_mass_fraction_agg = np.zeros((results.shape[0],n_part_org))
 
-solid_mass_fraction = np.zeros((prova.shape[0],n_part))
+for i in range(n_part_org):
+    solid_mass_fraction_org[:,i] = results[:,d1["smf"+str(i+1)].column_org] * ( 1 - gas_mass_fraction[:,0] - ice_mass_fraction[:,0] - liquid_water_mass_fraction[:,0])
+    if d1["smf"+str(i+1)].agg != 0:
+        solid_mass_fraction_agg[:,i] = results[:,d1["smf"+str(i+1)].column_agg] * ( 1 - gas_mass_fraction[:,0] - ice_mass_fraction[:,0] - liquid_water_mass_fraction[:,0])
+       
 
-for i in range(n_part):
-    solid_mass_fraction[:,i] = solid_partial_mass_fraction[:,i] * ( 1 - gas_mass_fraction[:,0] - ice_mass_fraction[:,0] - liquid_water_mass_fraction[:,0])
 
-solid_tot_mass_fraction = np.zeros((prova.shape[0],1))
 
-solid_tot_mass_fraction[:,0] = np.sum(solid_mass_fraction,axis=1)
+solid_tot_mass_fraction_org = np.zeros((results.shape[0],1))
+solid_tot_mass_fraction_org[:,0] = np.sum(solid_mass_fraction_org,axis=1)
+solid_tot_mass_fraction_agg = np.zeros((results.shape[0],1))
+solid_tot_mass_fraction_agg[:,0] = np.sum(solid_mass_fraction_agg,axis=1)
 
-rho_atm = prova[:,12+n_part+n_gas+1]
+solid_tot_mass_fraction = solid_tot_mass_fraction_org + solid_tot_mass_fraction_agg
+
+
+rho_atm = results[:,12+n_part+n_gas+1]
 rho_atm = rho_atm.reshape((-1,1))
 
-
-mfr = prova[:,12+n_part+n_gas+2]
+mfr = results[:,12+n_part+n_gas+2]
 mfr = mfr.reshape((-1,1))
 
-temp_atm = prova[:,12+n_part+n_gas+3]
+temp_atm = results[:,12+n_part+n_gas+3]
 temp_atm = temp_atm.reshape((-1,1))
 
-p_atm = prova[:,12+n_part+n_gas+4]
+p_atm = results[:,12+n_part+n_gas+4]
 p_atm = p_atm.reshape((-1,1))
 
 
@@ -161,6 +216,7 @@ n_z = z.shape[0]
 
 rho_rel = rho_mix - rho_atm
 rho_rel = rho_rel.reshape((-1,1))
+
 
 
 # PLOT FIGURES
@@ -193,21 +249,27 @@ plt.legend(lines, [names[j] for j in range(len(names))])
 
 plt.subplot(2, 2, 3)
 
-for i in range(n_part):
+color=iter(cm.rainbow(np.linspace(0,1,n_part_org)))
 
-    plt.plot(solid_mass_fraction[:,i],z,'-')
-    
+for i in range(n_part_org):
+    c=next(color)
+    plt.plot(solid_mass_fraction_org[:,i],z,'-', c=c, label="CL{0}".format(i+1))
+    plt.plot(solid_mass_fraction_agg[:,i],z,'--', c=c)   
+    #plt.plot(solid_mass_fraction_org[:,i] + solid_mass_fraction_agg[:,i],z,'*-', c=c)
+
+
+plt.legend()
+
 plt.xlabel('Particles mass fraction')
 plt.ylabel('Height (km)')
 
 plt.subplot(2, 2, 4)
 
-lines = plt.plot(solid_tot_mass_fraction,z, gas_mass_fraction,z,liquid_water_mass_fraction,z, ice_mass_fraction, z,'--')
+lines = plt.plot(solid_tot_mass_fraction ,z, gas_mass_fraction,z,liquid_water_mass_fraction,z, ice_mass_fraction, z,'--')
 
 plt.xlabel('Phases mass fraction')
 plt.ylabel('Height (km)')
 names = ['part','gas','lq','ice']
-
 plt.legend(lines, [names[j] for j in range(len(names))])
 fig.tight_layout()
 fig.savefig(str(filename)+'_mass_fraction.pdf')   # save the figure to file
@@ -228,31 +290,42 @@ plt.ylabel('Height (km)')
 fig.savefig(str(filename)+'_temp.pdf')   # save the figure to file
 #plt.close()
 
-# PARTICLE LOSS FRACTION
+# ORG PARTICLE LOSS FRACTION - AGGR PARTICLE CREATION
 
 fig = plt.figure()
 
-solid_mass_flux = np.zeros((prova.shape[0],n_part))
-solid_mass_loss = np.zeros((prova.shape[0],n_part))
-solid_mass_loss_cum = np.zeros((prova.shape[0],n_part))
+solid_mass_flux_org = np.zeros((results.shape[0],n_part_org))
+solid_mass_loss_org = np.zeros((results.shape[0],n_part_org))
 
-for i in range(n_part):
+solid_mass_flux_agg = np.zeros((results.shape[0],n_part_org))
 
-    solid_mass_flux[:,i] = solid_mass_fraction[:,i] * rho_mix[:,0] * math.pi * r_mt[:,0]**2 * mag_u[:,0]    
-       
-    solid_mass_loss[:,i] = solid_mass_flux[1,i] - solid_mass_flux[:,i]  
+solid_mass_loss_cum = np.zeros((results.shape[0],n_part_org))
+solid_mass_flux = np.zeros((results.shape[0],n_part_org))
+
+
+for i in range(n_part_org):
+
+    solid_mass_flux_org[:,i] = solid_mass_fraction_org[:,i] * rho_mix[:,0] * math.pi * r_mt[:,0]**2 * mag_u[:,0] 
+
+    solid_mass_loss_org[:,i] = solid_mass_flux_org[1,i] - solid_mass_flux_org[:,i]  
+
+    solid_mass_flux_agg[:,i] = solid_mass_fraction_agg[:,i] * rho_mix[:,0] * math.pi * r_mt[:,0]**2 * mag_u[:,0] 
+  
+    solid_mass_flux[:,i] = ( solid_mass_fraction_org[:,i] + solid_mass_fraction_agg[:,i] ) * rho_mix[:,0] * math.pi * r_mt[:,0]**2 * mag_u[:,0] 
     
     solid_mass_loss_cum[:,i] =  1 - (solid_mass_flux[:,i]/float(solid_mass_flux[0,i]))
 
-    plt.plot(solid_mass_loss_cum[:,i],z,'-')
+    plt.plot(solid_mass_loss_cum[:,i],z,'-' , label="CL{0}".format(i+1))
 
 
+plt.legend()
 plt.xlabel('Particles mass loss fraction')
 plt.ylabel('Height (km)')
-fig.savefig(str(filename)+'_particles_loss_fraction.pdf')   # save the figure to file
+
+
+
+fig.savefig(str(filename)+'_particles_fraction.pdf')   # save the figure to file
 #plt.close()
-
-
 
 fig = plt.figure()
 
@@ -270,8 +343,8 @@ else:
         
         plt.subplot(2,n_part,i+1)
         
-        M0 = np.asarray(moments[:,i,0], dtype = float).reshape((-1,1))
-        M1 = np.asarray(moments[:,i,1], dtype = float).reshape((-1,1))       
+        M0 = np.asarray(moments[:,0,i], dtype = float).reshape((-1,1))
+        M1 = np.asarray(moments[:,1,i], dtype = float).reshape((-1,1))      
         plt.plot(M1[:,0]/M0[:,0],z)        
         plt.xlabel(r'$\mu$'"("r'$\phi$'")")
                            
@@ -284,7 +357,7 @@ if n_part == 1 :
     
     plt.subplot(1,4,2)
  
-    sigma = np.zeros((prova.shape[0],1)) 
+    sigma = np.zeros((results.shape[0],1)) 
 
     M0 = np.asarray(moments[:,0], dtype = float).reshape((-1,1))
     M1 = np.asarray(moments[:,1], dtype = float).reshape((-1,1))
@@ -302,7 +375,7 @@ if n_part == 1 :
 
     plt.subplot(1,4,3)
 
-    skew = np.zeros((prova.shape[0],1)) 
+    skew = np.zeros((results.shape[0],1)) 
 
     skew[:,0] = M3[:,0] - 3 * M1[:,0] * M2[:,0] + 2 * M1[:,0]**3      
  
@@ -322,15 +395,15 @@ else:
     for i in range(n_part):
         
         plt.subplot(2,n_part,n_part+i+1)                      
-        sigma = np.zeros((prova.shape[0],1))         
+        sigma = np.zeros((results.shape[0],1))         
 
-        M0 = np.asarray(moments[:,i,0], dtype = float).reshape((-1,1))
-        M1 = np.asarray(moments[:,i,1], dtype = float).reshape((-1,1))
-        M2 = np.asarray(moments[:,i,2], dtype = float).reshape((-1,1))       
-        M3 = np.asarray(moments[:,i,3], dtype = float).reshape((-1,1))      
+        M0 = np.asarray(moments[:,0,i], dtype = float).reshape((-1,1))
+        M1 = np.asarray(moments[:,1,i], dtype = float).reshape((-1,1))
+        M2 = np.asarray(moments[:,2,i], dtype = float).reshape((-1,1))       
+        M3 = np.asarray(moments[:,3,i], dtype = float).reshape((-1,1))      
         sigma[:,0] = np.sqrt(M2[:,0]/M0[:,0]-(M1[:,0]/M0[:,0])**2)
-
-        plt.plot(sigma,z)
+        plt.plot(sigma,z,'.')
+         
                         
         plt.xlabel(r'$\sigma$')
         plt.ylabel('Height (km)')
@@ -467,8 +540,6 @@ ax.set_ylabel('y (km)')
 ax.set_zlabel('z (km)')
 fig.tight_layout()   
 fig.savefig(str(filename)+'_plume.pdf')   # save the figure to file
-#plt.close()
-
 
 plt.show()
 
