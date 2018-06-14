@@ -2590,7 +2590,7 @@ CONTAINS
 
        IF ( n_cloud .EQ. 1 ) THEN
           
-          IF ( verbose_level .GE. 0 ) THEN
+          IF ( verbose_level .GE. 1 ) THEN
              
              !WRITE(*,110) 0.5D0 * ( x_top + x_bot ) , 0.5D0 * ( y_top+y_bot ) , &
               !    0.5D0 * ( z_top + z_bot ) , delta_solid(1:n_part)
