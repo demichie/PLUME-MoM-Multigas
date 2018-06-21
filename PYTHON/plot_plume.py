@@ -327,90 +327,92 @@ plt.ylabel('Height (km)')
 fig.savefig(str(filename)+'_particles_fraction.pdf')   # save the figure to file
 #plt.close()
 
-fig = plt.figure()
+if n_mom > 4:  #moments are plotted for lognormal distributions only
 
-if n_part == 1:
+   fig = plt.figure()
+
+   if n_part == 1:
     
-    plt.subplot(1,4,1)
-    plt.plot(moments[:,1]/moments[:,0],z)    
-    plt.xlabel(r'$\mu$'"("r'$\phi$'")")
+       plt.subplot(1,4,1)
+       plt.plot(moments[:,1]/moments[:,0],z)    
+       plt.xlabel(r'$\mu$'"("r'$\phi$'")")
 
     
     
-else:
+   else:
     
-    for i in range(n_part):
+       for i in range(n_part):
         
-        plt.subplot(2,n_part,i+1)
+           plt.subplot(2,n_part,i+1)
         
-        M0 = np.asarray(moments[:,0,i], dtype = float).reshape((-1,1))
-        M1 = np.asarray(moments[:,1,i], dtype = float).reshape((-1,1))      
-        plt.plot(M1[:,0]/M0[:,0],z)        
-        plt.xlabel(r'$\mu$'"("r'$\phi$'")")
+           M0 = np.asarray(moments[:,0,i], dtype = float).reshape((-1,1))
+           M1 = np.asarray(moments[:,1,i], dtype = float).reshape((-1,1))      
+           plt.plot(M1[:,0]/M0[:,0],z)        
+           plt.xlabel(r'$\mu$'"("r'$\phi$'")")
                            
     
-    plt.ylabel('Height (km)')
+       plt.ylabel('Height (km)')
 
 
 
-if n_part == 1 :
+   if n_part == 1 :
     
-    plt.subplot(1,4,2)
+       plt.subplot(1,4,2)
  
-    sigma = np.zeros((results.shape[0],1)) 
+       sigma = np.zeros((results.shape[0],1)) 
 
-    M0 = np.asarray(moments[:,0], dtype = float).reshape((-1,1))
-    M1 = np.asarray(moments[:,1], dtype = float).reshape((-1,1))
-    M2 = np.asarray(moments[:,2], dtype = float).reshape((-1,1))       
-    M3 = np.asarray(moments[:,3], dtype = float).reshape((-1,1)) 
+       M0 = np.asarray(moments[:,0], dtype = float).reshape((-1,1))
+       M1 = np.asarray(moments[:,1], dtype = float).reshape((-1,1))
+       M2 = np.asarray(moments[:,2], dtype = float).reshape((-1,1))       
+       M3 = np.asarray(moments[:,3], dtype = float).reshape((-1,1)) 
 
-    sigma[:,0] = np.sqrt(M2[:,0]/M0[:,0]-(M1[:,0]/M0[:,0])**2)
+       sigma[:,0] = np.sqrt(M2[:,0]/M0[:,0]-(M1[:,0]/M0[:,0])**2)
 
 
-    plt.plot(sigma,z)
+       plt.plot(sigma,z)
    
     
-    plt.xlabel(r'$\sigma$'"("r'$\phi$'")")
-    plt.ylabel('Height (km)')
+       plt.xlabel(r'$\sigma$'"("r'$\phi$'")")
+       plt.ylabel('Height (km)')
 
-    plt.subplot(1,4,3)
+       plt.subplot(1,4,3)
 
-    skew = np.zeros((results.shape[0],1)) 
+       skew = np.zeros((results.shape[0],1)) 
 
-    skew[:,0] = M3[:,0] - 3 * M1[:,0] * M2[:,0] + 2 * M1[:,0]**3      
+       skew[:,0] = M3[:,0] - 3 * M1[:,0] * M2[:,0] + 2 * M1[:,0]**3      
  
-    plt.plot(skew,z)
+       plt.plot(skew,z)
 
-    plt.xlabel('Skew (\phi)'"("r'$\phi$'")")
-    plt.ylabel('Height (km)')
+       plt.xlabel('Skew (\phi)'"("r'$\phi$'")")
+       plt.ylabel('Height (km)')
 
-    plt.subplot(1,4,4)
-    plt.plot(100*solid_mass_loss_cum[:,i],z,'-')
-    plt.xlabel('Solid Mass Flux lost (%)')
-    plt.ylabel('Height (km)')
+       plt.subplot(1,4,4)
+       plt.plot(100*solid_mass_loss_cum[:,i],z,'-')
+       plt.xlabel('Solid Mass Flux lost (%)')
+       plt.ylabel('Height (km)')
 
    
-else:    
+   else:    
     
-    for i in range(n_part):
+       for i in range(n_part):
         
-        plt.subplot(2,n_part,n_part+i+1)                      
-        sigma = np.zeros((results.shape[0],1))         
+           plt.subplot(2,n_part,n_part+i+1)                      
+           sigma = np.zeros((results.shape[0],1))         
 
-        M0 = np.asarray(moments[:,0,i], dtype = float).reshape((-1,1))
-        M1 = np.asarray(moments[:,1,i], dtype = float).reshape((-1,1))
-        M2 = np.asarray(moments[:,2,i], dtype = float).reshape((-1,1))       
-        M3 = np.asarray(moments[:,3,i], dtype = float).reshape((-1,1))      
-        sigma[:,0] = np.sqrt(M2[:,0]/M0[:,0]-(M1[:,0]/M0[:,0])**2)
-        plt.plot(sigma,z,'.')
+           M0 = np.asarray(moments[:,0,i], dtype = float).reshape((-1,1))
+           M1 = np.asarray(moments[:,1,i], dtype = float).reshape((-1,1))
+           M2 = np.asarray(moments[:,2,i], dtype = float).reshape((-1,1))       
+           M3 = np.asarray(moments[:,3,i], dtype = float).reshape((-1,1))      
+           sigma[:,0] = np.sqrt(M2[:,0]/M0[:,0]-(M1[:,0]/M0[:,0])**2)
+           plt.plot(sigma,z,'.')
          
                         
-        plt.xlabel(r'$\sigma$')
-        plt.ylabel('Height (km)')
+           plt.xlabel(r'$\sigma$')
+           plt.ylabel('Height (km)')
 
-fig.tight_layout()
-fig.savefig(str(filename)+'_moments.pdf')   # save the figure to file
-#plt.close()
+   fig.tight_layout()
+   fig.savefig(str(filename)+'_moments.pdf')   # save the figure to file
+   #plt.close()
 
 # VARIABLES
 
