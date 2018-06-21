@@ -99,7 +99,7 @@ CONTAINS
 
     USE particles_module, ONLY: mom , set_rhop_mom , set_cp_rhop_mom , set_mom ,&
          set_cp_mom , solid_volume_fraction , solid_mass_fraction ,             &
-         aggregation_array, birth_mom , death_mom
+         aggregation_flag , aggregation_array, birth_mom , death_mom
 
     USE plume_module, ONLY: s , r , u , w , mag_u , phi , alpha_inp , beta_inp ,&
          rp , prob_factor , particles_loss , r0 , z
@@ -281,14 +281,17 @@ CONTAINS
              rhs_(idx) = - 2.D0 * prob_factor * r *            &
                   rho_mix * set_mom(i_part,i) * mom(i_part,i)
 
-             IF ( aggregation_array(i_part) ) THEN
-
+             !WRITE(*,*) 'rate: idx, rhs_(idx) ',idx, rhs_(idx)
+             !WRITE(*,*) 'aggregation_array(i_part)',aggregation_array(i_part)
+             !WRITE(*,*) 'rate: r', r
+             
+             IF ( aggregation_flag .AND. aggregation_array(i_part) ) THEN
+                
                 rhs_(idx) = rhs_(idx) + r**2 * rho_mix**2 *                     &
                      ( birth_mom(i_part,i) - death_mom(i_part,i) )
-
+                
              END IF
-
-             
+                          
           END IF
 
        END DO
@@ -308,6 +311,9 @@ CONTAINS
 
     END DO
 
+    !WRITE(*,*) 'rate: size(rhs)',size(rhs)
+    !WRITE(*,*) 'rate: rhs',rhs
+    
 
     RETURN
 
@@ -427,6 +433,8 @@ CONTAINS
     DO i=1,itotal
 
        fnew(i) = fold(i) + rate(i) * ds
+
+       !WRITE(*,*) 'marching: i,fold(i),rate(i),ds',i,fold(i),rate(i),ds 
 
     END DO
 
@@ -603,7 +611,10 @@ CONTAINS
 
        CALL wheeler_algorithm( f_(idx1:idx2) , distribution , xi(i_part,:) , &
             wi_temp(i_part,:) )
- 
+
+       !WRITE(*,*) 'unlump: f_(idx1:idx2)',f_(idx1:idx2)
+       !WRITE(*,*) 'unlump: xi =',xi(i_part,:)
+       
        DO j=1,n_nodes
 
           part_dens_array(i_part,j) = particles_density( i_part , xi(i_part,j) )

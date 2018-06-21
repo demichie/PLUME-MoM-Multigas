@@ -425,8 +425,10 @@ CONTAINS
 
        IF ( Vg_Ganser .LE. 0.D0 ) THEN
 
+          WRITE(*,*) 'diam',diam
           WRITE(*,*) 'NEGATIVE VALUE', Vinit,Vg_Ganser
-
+          READ(*,*)
+          
        END IF
 
 

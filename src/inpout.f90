@@ -199,6 +199,24 @@ CONTAINS
 
     LOGICAL :: lexist
 
+
+    !---------- default flags of the CONTROL_PARAMETERS namelist ---------------
+    dakota_flag = .FALSE.
+    hysplit_flag = .FALSE.
+    inversion_flag = .FALSE.
+    aggregation_flag = .FALSE.
+    water_flag = .FALSE.
+
+    !------------ default flags of the PLUME_PARAMETERS namelist ---------------
+    particle_loss = .TRUE.
+
+    !-------------- default flags of the INITIAL_VALUES namelist ---------------
+    initial_neutral_density = .FALSE.
+    
+    !------------ default flags of the HYSPLIT_PARAMETERS namelist -------------
+    nbl_stop = .TRUE.
+    
+    
     gi = 9.81d0               ! Gravity acceleration
     pi_g = 4.D0 * ATAN(1.D0) 
 
@@ -227,15 +245,6 @@ CONTAINS
        !***  Initialization of variables readed in the input file (any version of the
        !***  input file)
        !
-
-       !---------- parameters of the CONTROL_PARAMETERS namelist -------------------
-       run_name = 'default_run'
-       verbose_level = 0
-       dakota_flag = .FALSE.
-       hysplit_flag = .FALSE.
-       inversion_flag = .FALSE.
-       aggregation_flag = .FALSE.
-       water_flag = .FALSE.
 
        !---------- parameters of the INERSION_PARAMETERS namelist ------------------
        height_obj = 0.D0
@@ -1265,6 +1274,10 @@ CONTAINS
 
        ! WRITE(*,*) 'aggr_tot',COUNT(aggregation_array(1:n_part))
 
+    ELSE
+
+       aggregation_array(1:n_part) = .FALSE.
+       
     END IF
 
     IF ( hysplit_flag ) THEN
@@ -1423,29 +1436,33 @@ CONTAINS
     WRITE(bak_unit, mixture_parameters) 
 
     IF ( verbose_level .GE. 1 ) WRITE(*,*) 'read mixture_parameters: done'
+    
+    IF ( aggregation_flag ) THEN
 
-    i_aggr = 0
+       i_aggr = 0
 
-    DO i_part = 1, n_part_org
+       DO i_part = 1, n_part_org
 
-       IF ( aggregation_array(i_part) ) THEN
+          IF ( aggregation_array(i_part) ) THEN
 
-          i_aggr = i_aggr + 1
+             i_aggr = i_aggr + 1
 
-          aggr_idx(i_part) = n_part_org + i_aggr
-          aggr_idx(n_part_org + i_aggr) = i_part
+             aggr_idx(i_part) = n_part_org + i_aggr
+             aggr_idx(n_part_org + i_aggr) = i_part
 
-          diam1( n_part_org + i_aggr ) = diam1(i_part)
-          rho1( n_part_org + i_aggr ) = ( 1.D0 - aggregate_porosity(i_part) )   &
-               * rho1(i_part)
-          diam2( n_part_org + i_aggr ) = diam2(i_part)
-          rho2( n_part_org + i_aggr ) = ( 1.D0 - aggregate_porosity(i_part) )   &
-               * rho2(i_part)
-          cp_part( n_part_org + i_aggr ) = cp_part(i_part)
- 
-       END IF
+             diam1( n_part_org + i_aggr ) = diam1(i_part)
+             rho1( n_part_org + i_aggr ) = ( 1.D0 - aggregate_porosity(i_part) )   &
+                  * rho1(i_part)
+             diam2( n_part_org + i_aggr ) = diam2(i_part)
+             rho2( n_part_org + i_aggr ) = ( 1.D0 - aggregate_porosity(i_part) )   &
+                  * rho2(i_part)
+             cp_part( n_part_org + i_aggr ) = cp_part(i_part)
 
-    END DO
+          END IF
+
+       END DO
+
+    END IF
 
     IF ( distribution .EQ. 'beta' ) THEN
 
@@ -1456,22 +1473,25 @@ CONTAINS
        READ(inp_unit, beta_parameters)
        WRITE(bak_unit, beta_parameters)
 
-       i_aggr = 0
-       
-       DO i_part = 1, n_part_org
-          
-          IF ( aggregation_array(i_part) ) THEN
-             
-             i_aggr = i_aggr + 1
-             
-             p_beta( n_part_org + i_aggr ) = p_beta(i_part)
-             q_beta( n_part_org + i_aggr ) = q_beta(i_part)
-             d_max( n_part_org + i_aggr ) = d_max(i_part)
-             
-          END IF
-          
-       END DO
+       IF ( aggregation_flag ) THEN
 
+          i_aggr = 0
+
+          DO i_part = 1, n_part_org
+
+             IF ( aggregation_array(i_part) ) THEN
+
+                i_aggr = i_aggr + 1
+
+                p_beta( n_part_org + i_aggr ) = p_beta(i_part)
+                q_beta( n_part_org + i_aggr ) = q_beta(i_part)
+                d_max( n_part_org + i_aggr ) = d_max(i_part)
+
+             END IF
+
+          END DO
+
+       END IF
        
     ELSEIF ( distribution .EQ. 'lognormal' ) THEN
 
@@ -1483,31 +1503,34 @@ CONTAINS
 
        READ(inp_unit, lognormal_parameters)
        WRITE(bak_unit, lognormal_parameters)
-
-       i_aggr = 0
        
-       DO i_part = 1, n_part_org
+       IF ( aggregation_flag ) THEN
 
-          IF ( mu_lognormal(i_part) .EQ. 0.D0) mu_lognormal(i_part) = 1.D-5
-          
-          IF ( aggregation_array(i_part) ) THEN
-             
-             i_aggr = i_aggr + 1
-             
-             solid_partial_mass_fraction( n_part_org + i_aggr ) = 0.0001D0      &
-                  * solid_partial_mass_fraction(i_part)
+          i_aggr = 0
 
-             solid_partial_mass_fraction( i_part ) = 0.9999D0                   &
-                  * solid_partial_mass_fraction(i_part)
+          DO i_part = 1, n_part_org
 
-             mu_lognormal( n_part_org + i_aggr ) = mu_lognormal(i_part)
-             sigma_lognormal( n_part_org + i_aggr ) = sigma_lognormal(i_part)
-             
-          END IF
-          
-       END DO
+             IF ( mu_lognormal(i_part) .EQ. 0.D0) mu_lognormal(i_part) = 1.D-5
 
-       
+             IF ( aggregation_array(i_part) ) THEN
+
+                i_aggr = i_aggr + 1
+
+                solid_partial_mass_fraction( n_part_org + i_aggr ) = 0.0001D0      &
+                     * solid_partial_mass_fraction(i_part)
+
+                solid_partial_mass_fraction( i_part ) = 0.9999D0                   &
+                     * solid_partial_mass_fraction(i_part)
+
+                mu_lognormal( n_part_org + i_aggr ) = mu_lognormal(i_part)
+                sigma_lognormal( n_part_org + i_aggr ) = sigma_lognormal(i_part)
+
+             END IF
+
+          END DO
+
+       END IF
+
        mu_bar = -log( 2.D0 ) * mu_lognormal
        sigma_bar = log( 2.D0 ) * sigma_lognormal
 
@@ -1523,26 +1546,30 @@ CONTAINS
        READ(inp_unit, constant_parameters)
        WRITE(bak_unit, constant_parameters)
        
-       i_aggr = 0
+       IF ( aggregation_flag ) THEN
 
-       DO i_part = 1, n_part_org
-          
-          IF ( aggregation_array(i_part) ) THEN
-             
-             i_aggr = i_aggr + 1
+          i_aggr = 0
 
-             solid_partial_mass_fraction( n_part_org + i_aggr ) = 0.0001D0      &
-                  * solid_partial_mass_fraction(i_part)
+          DO i_part = 1, n_part_org
 
-             solid_partial_mass_fraction( i_part ) = 0.9999D0                   &
-                  * solid_partial_mass_fraction(i_part)
-             
-             diam_constant_phi( n_part_org + i_aggr ) = diam_constant_phi(i_part)
-             
-          END IF
-          
-       END DO
-       
+             IF ( aggregation_array(i_part) ) THEN
+
+                i_aggr = i_aggr + 1
+
+                solid_partial_mass_fraction( n_part_org + i_aggr ) = 0.0001D0      &
+                     * solid_partial_mass_fraction(i_part)
+
+                solid_partial_mass_fraction( i_part ) = 0.9999D0                   &
+                     * solid_partial_mass_fraction(i_part)
+
+                diam_constant_phi( n_part_org + i_aggr ) = diam_constant_phi(i_part)
+
+             END IF
+
+          END DO
+
+       END IF
+
        WHERE ( diam_constant_phi .EQ. 0.D0) diam_constant_phi=1.D-5
        diam_constant = 1.D-3 * 2.D0**(-diam_constant_phi)
 

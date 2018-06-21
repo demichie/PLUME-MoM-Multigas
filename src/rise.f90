@@ -282,6 +282,8 @@ CONTAINS
 
        CALL rate(rhs)
 
+       !WRITE(*,*) 'plumerise: rhs',rhs
+       
        CALL marching(f,ftemp,rhs) 
 
        IF ( verbose_level .GE. 2 ) THEN

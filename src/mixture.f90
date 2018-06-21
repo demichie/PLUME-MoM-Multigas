@@ -357,15 +357,15 @@ CONTAINS
     IF ( aggregation_flag ) CALL eval_aggregation_moments( xi , wi ,            &
          liquid_water_mass_fraction , ice_mass_fraction )
 
-    
+
     !---------- Specific enthalpy after addition of external water --------------
     mixt_enth = erupted_mass_fraction * enth_at_vent +                          &
          added_water_mass_fraction * ( h_lw0+c_lw * ( added_water_temp-T_ref ) )
 
     ! The new temperature and the partitioning of water is computed
-    
+
     CALL eval_temp(mixt_enth,pa,cpsolid)
-      
+
     ! Compute the specific enthalpy with the new temperature and the corrected
     ! mass fractions
     check_enth = dry_air_mass_fraction * cpair * t_mix                          &
@@ -395,10 +395,10 @@ CONTAINS
        ! WRITE(*,*) 'vent_water',( water_mass_fraction-added_water_mass_fraction ) / &
        !      erupted_mass_fraction
        WRITE(*,*)
-       
-       
+
+
     END IF
-       
+
     !--- With the new temperature compute the densities of the gas components ---
 
     ! Compute density of gas species and mixture of gas species
@@ -409,10 +409,10 @@ CONTAINS
 
        DO i_gas = 1,n_gas
 
-          rvolcgas_mix = rvolcgas_mix + volcgas_mass_fraction(i_gas)               &
+          rvolcgas_mix = rvolcgas_mix + volcgas_mass_fraction(i_gas)            &
                * rvolcgas(i_gas)
 
-          cpvolcgas_mix = cpvolcgas_mix + volcgas_mass_fraction(i_gas)             &
+          cpvolcgas_mix = cpvolcgas_mix + volcgas_mass_fraction(i_gas)          &
                * cpvolcgas(i_gas)
 
        END DO
@@ -488,7 +488,7 @@ CONTAINS
 
        mass_flow_rate = 10.0**log10_mfr
 
-       
+
        IF ( write_flag ) WRITE(*,*) 'Fixed MER [kg/s] =',mass_flow_rate
 
        IF ( r0 .EQ. -1.D0 ) THEN
@@ -570,9 +570,9 @@ CONTAINS
     USE meteo_module, ONLY : T_ref
 
     USE particles_module, ONLY : t_part
-    
+
     USE variables, ONLY : verbose_level , water_flag
-    
+
     IMPLICIT none
 
     !> mixture enthalpy
@@ -583,43 +583,44 @@ CONTAINS
 
     REAL*8, INTENT(IN) :: cpsolid
 
-    
+    ! WRITE(*,*) 'eval_temp'
+
     IF (water_flag) THEN 
 
-        ! --- CASE1: for t_mix >= T_ref: only water vapour and liquid water ----- 
+       ! --- CASE1: for t_mix >= T_ref: only water vapour and liquid water ----- 
 
-        CALL eval_temp_wv_lw(enth,pa,cpsolid)
+       CALL eval_temp_wv_lw(enth,pa,cpsolid)
 
-        liquid_water_mass_fraction = water_mass_fraction -                      &
-             water_vapor_mass_fraction - ice_mass_fraction
+       liquid_water_mass_fraction = water_mass_fraction -                      &
+            water_vapor_mass_fraction - ice_mass_fraction
 
-        ! -- CASE2: for T_ref - 40 < t_mix < T_ref: water vapour, liquid water --
-        ! --- and ice ----------------------------------------------------------- 
+       ! -- CASE2: for T_ref - 40 < t_mix < T_ref: water vapour, liquid water --
+       ! --- and ice ----------------------------------------------------------- 
 
-        SEARCH_TEMP: IF ( ( t_mix .GT. (T_ref-40) ) .AND. ( t_mix .LT. T_ref)   &
-             .AND. ( liquid_water_mass_fraction .GT. 0.D0 ) ) THEN
+       SEARCH_TEMP: IF ( ( t_mix .GT. (T_ref-40) ) .AND. ( t_mix .LT. T_ref)   &
+            .AND. ( liquid_water_mass_fraction .GT. 0.D0 ) ) THEN
 
-            CALL eval_temp_wv_lw_ice(enth,pa,cpsolid)
+          CALL eval_temp_wv_lw_ice(enth,pa,cpsolid)
 
 
-            ! --- for exit status = 1: no equilibrium between vapour - liquid --- 
-            ! --- and ice, skip to CASE 3 (vapour and ice) ----------------------
- 
-            IF (exit_status .EQ. 1.D0) CALL eval_temp_wv_ice(enth,pa,cpsolid)
+          ! --- for exit status = 1: no equilibrium between vapour - liquid --- 
+          ! --- and ice, skip to CASE 3 (vapour and ice) ----------------------
 
-        ! --- CASE3: for t_mix < T_ref - 40: water vapour and ice ---------------
-           
-        ELSEIF ( t_mix .LT. (T_ref - 40.D0) ) THEN
+          IF (exit_status .EQ. 1.D0) CALL eval_temp_wv_ice(enth,pa,cpsolid)
 
-            CALL eval_temp_wv_ice(enth,pa,cpsolid)
+          ! --- CASE3: for t_mix < T_ref - 40: water vapour and ice ---------------
 
-        END IF SEARCH_TEMP
- 
+       ELSEIF ( t_mix .LT. (T_ref - 40.D0) ) THEN
+
+          CALL eval_temp_wv_ice(enth,pa,cpsolid)
+
+       END IF SEARCH_TEMP
+
     ELSE
-    
-        ! --- Evaluate t_mix for water_flag = false: only water vapour ----------
 
-        CALL eval_temp_no_water(enth,pa,cpsolid)
+       ! --- Evaluate t_mix for water_flag = false: only water vapour ----------
+
+       CALL eval_temp_no_water(enth,pa,cpsolid)
 
     END IF
 
@@ -627,9 +628,9 @@ CONTAINS
          - ice_mass_fraction
 
     t_part = t_mix
-    
+
     RETURN
-    
+
   END SUBROUTINE eval_temp
 
 
@@ -1101,15 +1102,15 @@ CONTAINS
 
     !WRITE(*,*) 'f0,f2',f0,f2
     !READ(*,*)
-    
-    
+
+
     IF ((f0*f2 .GT. 0.D0)) THEN
-    
-        exit_status = 1.0
 
-        RETURN
+       exit_status = 1.0
 
-    END IF 
+       RETURN
+
+    END IF
 
 
     IF ( ( lw_mf2 .GT. 0.D0 ) .AND. (lw_mf2 .LT. 1.D0 ) ) THEN
@@ -1158,7 +1159,7 @@ CONTAINS
           f1 = enth - enth1
 
           !WRITE(*,*) 'f0,f1,f2',f0,f1,f2
-         ! WRITE(*,*) 'temp0,temp1,temp2',temp0,temp1,temp2
+          ! WRITE(*,*) 'temp0,temp1,temp2',temp0,temp1,temp2
 
 
           !WRITE(*,*) 'lw_mf1,ice_mf1,wv_mf1',lw_mf1,ice_mf1,wv_mf1
@@ -1207,9 +1208,9 @@ CONTAINS
 
     ELSEIF (lw_mf2 .LT. 0.D0) THEN
 
-        exit_status = 1.D0
+       exit_status = 1.D0
 
-        RETURN
+       RETURN
 
     END IF
 
@@ -1597,16 +1598,16 @@ CONTAINS
 
 
 
-          t_mix = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw * T_ref )&
-             - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /         &
-             ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction          &
-             * cpsolid + liquid_water_mass_fraction * c_lw +                    &
-             water_vapor_mass_fraction * c_wv +  volcgas_mix_mass_fraction *    &
-             cpvolcgas_mix + c_ice * ice_mass_fraction )
+    t_mix = ( enth - liquid_water_mass_fraction * ( h_lw0 - c_lw * T_ref )&
+         - water_vapor_mass_fraction * ( h_wv0 - c_wv * T_ref ) ) /         &
+         ( dry_air_mass_fraction * cpair + solid_tot_mass_fraction          &
+         * cpsolid + liquid_water_mass_fraction * c_lw +                    &
+         water_vapor_mass_fraction * c_wv +  volcgas_mix_mass_fraction *    &
+         cpvolcgas_mix + c_ice * ice_mass_fraction )
 
 
-  !WRITE(*,*) 't_mix ',t_mix
-  !READ(*,*)
+    !WRITE(*,*) 't_mix ',t_mix
+    !READ(*,*)
   END SUBROUTINE eval_temp_no_water
 
 
