@@ -208,7 +208,7 @@ CONTAINS
     water_flag = .FALSE.
 
     !------------ default flags of the PLUME_PARAMETERS namelist ---------------
-    particle_loss = .TRUE.
+    particles_loss = .TRUE.
 
     !-------------- default flags of the INITIAL_VALUES namelist ---------------
     initial_neutral_density = .FALSE.
