@@ -1278,6 +1278,8 @@ CONTAINS
 
        aggregation_array(1:n_part) = .FALSE.
        
+       n_part_org = n_part
+       
     END IF
 
     IF ( hysplit_flag ) THEN
