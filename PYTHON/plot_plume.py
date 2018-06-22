@@ -103,7 +103,6 @@ moments = a.reshape((results.shape[0],n_mom,n_part))
 
 
 
-
 z_levels = moments.shape[0]
 results=results.reshape((z_levels,-1))
 
@@ -332,9 +331,12 @@ if n_mom > 4:  #moments are plotted for lognormal distributions only
    fig = plt.figure()
 
    if n_part == 1:
+
+       M0 = np.asarray(moments[:,0,0], dtype = float).reshape((-1,1))
+       M1 = np.asarray(moments[:,1,0], dtype = float).reshape((-1,1))
     
        plt.subplot(1,4,1)
-       plt.plot(moments[:,1]/moments[:,0],z)    
+       plt.plot(M1[:,0]/M0[:,0],z)   
        plt.xlabel(r'$\mu$'"("r'$\phi$'")")
 
     
@@ -361,10 +363,10 @@ if n_mom > 4:  #moments are plotted for lognormal distributions only
  
        sigma = np.zeros((results.shape[0],1)) 
 
-       M0 = np.asarray(moments[:,0], dtype = float).reshape((-1,1))
-       M1 = np.asarray(moments[:,1], dtype = float).reshape((-1,1))
-       M2 = np.asarray(moments[:,2], dtype = float).reshape((-1,1))       
-       M3 = np.asarray(moments[:,3], dtype = float).reshape((-1,1)) 
+       M0 = np.asarray(moments[:,0,0], dtype = float).reshape((-1,1))
+       M1 = np.asarray(moments[:,1,0], dtype = float).reshape((-1,1))
+       M2 = np.asarray(moments[:,2,0], dtype = float).reshape((-1,1))       
+       M3 = np.asarray(moments[:,3,0], dtype = float).reshape((-1,1)) 
 
        sigma[:,0] = np.sqrt(M2[:,0]/M0[:,0]-(M1[:,0]/M0[:,0])**2)
 
