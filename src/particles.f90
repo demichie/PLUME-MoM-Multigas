@@ -281,6 +281,8 @@ CONTAINS
 
     END DO
 
+    solid_partial_mass_fraction = mom0(1:n_part,0) / SUM(mom0(1:n_part,0))
+    
     CALL eval_particles_moments( xi(1:n_part,:) , w(1:n_part,:) ) 
 
 

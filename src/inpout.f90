@@ -222,6 +222,9 @@ CONTAINS
 
     WIND_MULT_COEFF = 1.D0
 
+    height_obj = -1.D0
+
+    
     R0 = -1.D0 
     W0 = -1.D0
     Log10_mfr = -1.D0
@@ -522,7 +525,7 @@ CONTAINS
        WRITE(bak_unit, inversion_parameters)
 
        write_flag = .FALSE.
-       
+        
     ELSE
 
        write_flag = .TRUE.
@@ -2202,6 +2205,15 @@ CONTAINS
        
        OPEN(hy_unit,FILE=hy_file)
 
+       IF ( ( height_obj .EQ. 0.D0 ) .OR. ( log10_mfr .EQ. 0.D0 ) ) THEN
+
+          WRITE(*,*) 'WRITING ZERO EMISSION HYSPLIT FILE'
+          CALL write_zero_hysplit
+          STOP
+
+       END IF
+
+       
     END IF
 
     n_unit = n_unit + 1
@@ -2462,6 +2474,53 @@ CONTAINS
 
   END SUBROUTINE write_inversion
 
+
+  SUBROUTINE write_zero_hysplit
+
+    USE particles_module, ONLY: n_part
+    
+    IMPLICIT NONE
+    
+    CHARACTER(len=8) :: x1 ! format descriptor
+
+    INTEGER :: i
+
+    REAL*8, ALLOCATABLE :: delta_solid(:)
+    
+    OPEN(hy_unit,FILE=hy_file)
+    
+    WRITE(hy_unit,107,advance="no")
+    
+    DO i=1,n_part
+       
+       WRITE(x1,'(I2.2)') i ! converting integer to string using a 'internal file'
+       
+       WRITE(hy_unit,108,advance="no") 'S mfr'//trim(x1)//' (kg/s)'
+       
+    END DO
+    
+    WRITE(hy_unit,*) ''
+
+    ALLOCATE( delta_solid(n_part) )
+    
+    delta_solid(1:n_part) = 0.D0
+   
+    WRITE(hy_unit,110) 0.D0 , 0.D0  , vent_height + 0.5D0 * hy_deltaz ,         &
+         delta_solid(1:n_part)
+
+    DEALLOCATE( delta_solid )
+
+    CLOSE(hy_unit)
+    
+107 FORMAT(1x,'     x (m)     ',1x,'      y (m)    ', 1x,'     z (m)     ')
+    
+108 FORMAT(2x,A)
+    
+110 FORMAT(50(1x,e15.8))
+
+    
+  END SUBROUTINE write_zero_hysplit
+  
   !*****************************************************************************
   !> \brief Dakota outputs
   !
@@ -2547,8 +2606,8 @@ CONTAINS
 
        gas_mf(i) = da_mf + wv_mf + volcgas_tot_mf
 
-       solid_mass_flux(1:n_part,i) =  solid_pmf(1:n_part,i) * (1.D0-gas_mf(i))  &
-            * rho_mix * pi_g * r_col(i)**2 * mag_u
+       solid_mass_flux(1:n_part,i) =  solid_pmf(1:n_part,i) * (1.D0 - gas_mf(i) &
+            - lw_mf - ice_mf ) * rho_mix * pi_g * r_col(i)**2 * mag_u
 
        solid_mass_loss_cum(1:n_part,i) = 1.D0 -  solid_mass_flux(1:n_part,i) /  &
             solid_mass_flux(1:n_part,1)
@@ -2556,12 +2615,14 @@ CONTAINS
        volcgas_mass_flux(1:n_gas,i) = volcgas_mf(1:n_gas,i)                     &
             *rho_mix * pi_g * r_col(i)**2 * mag_u 
 
-       !WRITE(*,*) 'Solid mass in the column (kg): ',solid_mass_flux(1:n_part,i)
+       !WRITE(*,*) 'Solid mass flux (kg/s): ',solid_mass_flux(1:n_part,i)
+       !WRITE(*,*) 'Total solid mass flux (kg/s): ',SUM(solid_mass_flux(1:n_part,i))
        !WRITE(*,*) 'solid_pmf: ',solid_pmf(1:n_part,i)
-
-       ! WRITE(*,*) z_col(i) , solid_mass_loss_cum(1:n_part,i)
-       ! READ(*,*)
-        !WRITE(*,*) 'volcgas_mass_flux ',volcgas_mass_flux(1:n_gas,i), z_col(i)
+       !WRITE(*,*) 'Sum solid mass fractions: ',SUM(solid_pmf(1:n_part,i))
+       !WRITE(*,*) 'gas mass fraction: ',gas_mf(i)
+       !WRITE(*,*) z_col(i) , solid_mass_loss_cum(1:n_part,i)
+       !READ(*,*)
+       !WRITE(*,*) 'volcgas_mass_flux ',volcgas_mass_flux(1:n_gas,i), z_col(i)
        !READ(*,*)
 
     END DO
@@ -2915,7 +2976,7 @@ CONTAINS
     
 108 FORMAT(2x,A)
     
-110 FORMAT(33(1x,e15.8))
+110 FORMAT(50(1x,e15.8))
 
 
     ! Write hysplit file for volcanig gas only
