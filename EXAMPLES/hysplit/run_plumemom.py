@@ -5,6 +5,8 @@ import os,sys
 import re
 import shutil
 from extract_wind import write_atm
+from astropy.io import ascii
+
 
 from input_file import *
 
@@ -158,7 +160,7 @@ f.write(filedata)
 
 f.close()
 
-
+col=[]
 
 for i in range(n_runs):
 
@@ -205,6 +207,35 @@ for i in range(n_runs):
                     outfile.write(line)
 
     subprocess.call(plumemom_dir+"/bin/PLUMEMoM", shell=True) 
+
+    output = np.loadtxt(str(runnamenew)+'.col', skiprows = 1)
+    
+    output = np.asarray(output)
+
+    z_top = output[-1,0]
+
+    r_top = output[-1,1]
+   
+    w_top = output[-1,6]
+
+    mag_u_top = output[-1,7]
+
+    u_top = np.sqrt(mag_u_top**2 / w_top **2)
+
+    phi_top = np.arctan(w_top/u_top)
+
+    z_top_radius = z_top + r_top * np.cos(phi_top)
+
+    z_top_av = z_top - vent_height    
+
+    z_top_radius_av = z_top_radius - vent_height
+    
+    col.append([int(timei.year),int(timei.month),int(timei.day),int(timei.hour),int(timei.minute), z_top, z_top_av,z_top_radius,z_top_radius_av,r_top,phi_top*57.29,vent_height ])
+
+
+col=np.asarray(col)
+col=col.reshape((-1,12))
+ascii.write(col,'column_height.txt', format='fixed_width', delimiter=" ", names=['year', 'month', 'day', 'hour', 'minute', 'top_height[m]','top_height_above_vent[m]', 'top_height+radius[m]','top_height+radius_above_vent[m]', 'top_radius[m]', 'bending_angle[deg]','vent_height[m]'], overwrite=True)  
 
 subprocess.call("rm plume_model.temp1", shell=True) 
 subprocess.call("rm plume_model.temp2", shell=True) 
