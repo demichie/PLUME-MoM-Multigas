@@ -1124,7 +1124,22 @@ CONTAINS
 
     WRITE(bak_unit, initial_values)
 
+    IF ( ( inversion_flag ) .AND. ( mfr0 .GT. 0.D0 ) ) THEN
 
+       WRITE(*,*) 'WARNING: you should not assign mfr when inversion is true'
+       WRITE(*,*) 'in the input file: mfr0',mfr0
+       STOP
+       
+    END IF
+
+    IF ( ( inversion_flag ) .AND. ( log10_mfr .GT. 0.D0 ) ) THEN
+
+       WRITE(*,*) 'WARNING: you should not assign mfr when inversion is true'
+       WRITE(*,*) 'in the input file: log10_mfr',log10_mfr
+       STOP
+       
+    END IF
+    
     IF ( mfr0 .GT. 0.D0 ) THEN
 
        IF ( log10_mfr .GT. 0.D0 ) THEN
