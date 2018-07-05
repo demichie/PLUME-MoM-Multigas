@@ -212,13 +212,26 @@ for i in range(n_runs):
     
     output = np.asarray(output)
 
-    z_top = output[-1,0]
+    if ( output.ndim == 2 ):
 
-    r_top = output[-1,1]
+        z_top = output[-1,0]
+
+        r_top = output[-1,1]
    
-    w_top = output[-1,6]
+        w_top = output[-1,6]
 
-    mag_u_top = output[-1,7]
+        mag_u_top = output[-1,7]
+
+    else:
+
+        z_top = output[-0]
+
+        r_top = output[-1]
+   
+        w_top = output[-6]
+
+        mag_u_top = output[-7]
+
 
     u_top = np.sqrt(mag_u_top**2 / w_top **2)
 
