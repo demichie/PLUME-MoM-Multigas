@@ -39,16 +39,16 @@ CONTAINS
     USE particles_module, ONLY : n_part , mom0 , mom
     USE particles_module, ONLY : distribution_variable
     USE particles_module, ONLY : solid_partial_mass_fraction
-    USE plume_module, ONLY: s , w , x , y , z , vent_height , r , mag_u
+    USE plume_module, ONLY: s , w , x , y , z , vent_height , r , mag_u , log10_mfr
     USE solver_module, ONLY: ds, ds0, f, ftemp, rhs, rhstemp
     USE solver_module, ONLY: f_stepold
-    USE variables, ONLY : verbose_level , inversion_flag
+    USE variables, ONLY : verbose_level , inversion_flag , height_obj
     USE variables, ONLY : dakota_flag , hysplit_flag , nbl_stop
     USE variables, ONLY : write_flag
     USE variables, ONLY : pi_g , height_nbl
 
     ! external procedures
-    USE inpout, ONLY: write_column , write_dakota
+    USE inpout, ONLY: write_column , write_dakota , write_zero_hysplit
     USE meteo_module, ONLY: zmet, initialize_meteo
     USE mixture_module, ONLY: initialize_mixture
     USE particles_module, ONLY: initialize_particles
@@ -255,6 +255,17 @@ CONTAINS
 
     IF ( write_flag ) CALL write_column
 
+    IF ( ( height_obj .EQ. 0.D0 ) .OR. ( log10_mfr .EQ. 0.D0 ) ) THEN
+
+       WRITE(*,*) 'WRITING ZERO EMISSION HYSPLIT FILE'
+       CALL write_zero_hysplit
+       CALL write_column
+       STOP
+       
+    END IF
+
+
+    
     ! IF ( hysplit_flag ) CALL write_hysplit(x,y,z,.FALSE.)
 
     deltarho_min = 1000.D0

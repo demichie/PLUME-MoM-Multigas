@@ -2204,15 +2204,6 @@ CONTAINS
     IF ( hysplit_flag ) THEN
        
        OPEN(hy_unit,FILE=hy_file)
-
-       IF ( ( height_obj .EQ. 0.D0 ) .OR. ( log10_mfr .EQ. 0.D0 ) ) THEN
-
-          WRITE(*,*) 'WRITING ZERO EMISSION HYSPLIT FILE'
-          CALL write_zero_hysplit
-          STOP
-
-       END IF
-
        
     END IF
 
@@ -2517,7 +2508,6 @@ CONTAINS
 108 FORMAT(2x,A)
     
 110 FORMAT(50(1x,e15.8))
-
     
   END SUBROUTINE write_zero_hysplit
   
