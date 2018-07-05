@@ -101,12 +101,6 @@ else:
     filedata = filedata.replace("{added_water_mass_fraction}", str(0) )
      
 
-f = open('plume_model.temp1','w')
-f.write(filedata)
-
-f.close()
-
-
 time_format = "%y %m %d %H %M"
 
 starttime_hhmm = datetime.datetime.strptime(starttime,time_format)
@@ -123,16 +117,47 @@ runtime=endemittime_round-starttime_round # numero ore arrotondate tra inizio e 
 n_runs = np.int(np.floor( runtime.total_seconds() / deltat_plumemom ) ) # numero run di PlumeMoM
 
 
-if isinstance(log10_mfr, (np.ndarray) ):
+if 'plume_height' in locals():
 
-    if ( len(log10_mfr) != n_runs ):
+    if isinstance(plume_height, (np.ndarray) ):
 
-        print 'WARNING: check numbers of values of log10_mfr',len(log10_mfr),n_runs
+        if ( len(plume_height) != n_runs ):
+
+            print 'WARNING: check numbers of values of plume_height',len(plume_height),n_runs
+            sys.exit()
+
+    else:
+
+        filedata = filedata.replace("{inversion_flag}", 'T' )
+        filedata = filedata.replace("{log10_mfr}", '-1.0' )
+        plume_height = np.ones(n_runs)*plume_height
+
+    if 'log10_mfr' in locals():
+
+        print 'WARNING: not possible to fix both log10_mfr and plume_height'
         sys.exit()
 
-else:
 
-    log10_mfr = np.ones(n_runs)*log10_mfr
+if 'log10_mfr' in locals():
+
+    if isinstance(log10_mfr, (np.ndarray) ):
+
+        if ( len(log10_mfr) != n_runs ):
+
+            print 'WARNING: check numbers of values of log10_mfr',len(log10_mfr),n_runs
+            sys.exit()
+
+    else:
+
+        filedata = filedata.replace("{inversion_flag}", 'F' )
+        filedata = filedata.replace("{plume_height}", '-1.0' )
+        log10_mfr = np.ones(n_runs)*log10_mfr
+
+f = open('plume_model.temp1','w')
+f.write(filedata)
+
+f.close()
+
 
 
 for i in range(n_runs):
@@ -150,7 +175,13 @@ for i in range(n_runs):
     filedata = filedata.replace("{runname}", '"'+str(runnamenew)+'"' )
 
 
-    filedata = filedata.replace("{log10_mfr}", str(log10_mfr[i]) )
+    if 'plume_height' in locals():
+        
+        filedata = filedata.replace("{plume_height}", str(plume_height[i]) )
+
+    if 'log10_mfr' in locals():
+
+        filedata = filedata.replace("{log10_mfr}", str(log10_mfr[i]) )
 
     
     f.write(filedata)

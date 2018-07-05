@@ -2,9 +2,17 @@
  RUN_NAME= {runname},
  VERBOSE_LEVEL=          0,
  DAKOTA_FLAG=F,
- INVERSION_FLAG=F,
+ INVERSION_FLAG={inversion_flag},
  HYSPLIT_FLAG=T,
  WATER_FLAG={water_flag},
+ /
+&INVERSION_PARAMETERS
+ height_obj = {plume_height},
+ r_min = 1.D0,
+ r_max = 200.D0,
+ n_values = 100,
+ w_min = 1.D0,
+ w_max = 500.D0,
  /
 &PLUME_PARAMETERS
  ALPHA_INP=  8.9999999999999997E-002,
@@ -27,8 +35,9 @@
  SHAPE_FACTOR= {shapefactor}    ,
  /
 &INITIAL_VALUES
- LOG10_MFR = {log10_mfr}     ,
- W0 = {vent_velocity} ,
+ R0 = -1.0     ,
+ W0 = 100.0 ,
+ LOG10_MFR = {log10_mfr}
  T_MIX0=  1300.0000000000000     ,
  INITIAL_NEUTRAL_DENSITY=F,
  WATER_MASS_FRACTION0=  {water_mass_fraction0},
@@ -36,7 +45,7 @@
  DS0=  2.500000000000000     ,
  N_PART= {npart},
  N_GAS= {ngas},
- DISTRIBUTION="constant            ",
+ DISTRIBUTION="constant",
  DISTRIBUTION_VARIABLE="mass_fraction",
  /
 &HYSPLIT_PARAMETERS
