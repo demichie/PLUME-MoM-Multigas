@@ -36,7 +36,7 @@
  /
 &INITIAL_VALUES
  R0 = -1.0     ,
- W0 = 100.0 ,
+ W0 = {vent_velocity} ,
  LOG10_MFR = {log10_mfr}
  T_MIX0=  1300.0000000000000     ,
  INITIAL_NEUTRAL_DENSITY=F,
