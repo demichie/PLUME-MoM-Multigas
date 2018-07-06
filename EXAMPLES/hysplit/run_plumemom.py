@@ -7,7 +7,6 @@ import shutil
 from extract_wind import write_atm
 from astropy.io import ascii
 
-
 from input_file import *
 
 def round_minutes(dt, direction, resolution):
@@ -42,8 +41,6 @@ rho2 = np.ones(npart)*rho2
 f = open('plume_model.template','r')
 filedata = f.read()
 f.close()
-
-filedata = filedata.replace("{vent_velocity}", str(vent_velocity) )
 
 filedata = filedata.replace("{npart}", str(npart) )
 
@@ -155,6 +152,24 @@ if 'log10_mfr' in locals():
         filedata = filedata.replace("{plume_height}", '-1.0' )
         log10_mfr = np.ones(n_runs)*log10_mfr
 
+
+if 'vent_velocity' in locals():
+
+    if isinstance(vent_velocity, (np.ndarray) ):
+
+        if ( len(vent_velocity) != n_runs ):
+
+            print 'WARNING: check numbers of values of log10_mfr',len(log10_mfr),n_runs
+            sys.exit()
+
+    else:
+
+        filedata = filedata.replace("{inversion_flag}", 'F' )
+        filedata = filedata.replace("{plume_height}", '-1.0' )
+        vent_velocity = np.ones(n_runs)*vent_velocity
+
+
+
 f = open('plume_model.temp1','w')
 f.write(filedata)
 
@@ -185,6 +200,11 @@ for i in range(n_runs):
 
         filedata = filedata.replace("{log10_mfr}", str(log10_mfr[i]) )
 
+    if 'vent_velocity' in locals():
+
+        filedata = filedata.replace("{vent_velocity}", str(vent_velocity[i]) )
+
+
     
     f.write(filedata)
     f.close()
@@ -208,30 +228,19 @@ for i in range(n_runs):
 
     subprocess.call(plumemom_dir+"/bin/PLUMEMoM", shell=True) 
 
+    subprocess.call(plumemom_dir+"/bin/PLUMEMoM", shell=True) 
+
     output = np.loadtxt(str(runnamenew)+'.col', skiprows = 1)
     
     output = np.asarray(output)
 
-    if ( output.ndim == 2 ):
+    z_top = output[-1,0]
 
-        z_top = output[-1,0]
-
-        r_top = output[-1,1]
+    r_top = output[-1,1]
    
-        w_top = output[-1,6]
+    w_top = output[-1,6]
 
-        mag_u_top = output[-1,7]
-
-    else:
-
-        z_top = output[-0]
-
-        r_top = output[-1]
-   
-        w_top = output[-6]
-
-        mag_u_top = output[-7]
-
+    mag_u_top = output[-1,7]
 
     u_top = np.sqrt(mag_u_top**2 / w_top **2)
 
@@ -246,9 +255,11 @@ for i in range(n_runs):
     col.append([int(timei.year),int(timei.month),int(timei.day),int(timei.hour),int(timei.minute), z_top, z_top_av,z_top_radius,z_top_radius_av,r_top,phi_top*57.29,vent_height ])
 
 
+
+
 col=np.asarray(col)
 col=col.reshape((-1,12))
-ascii.write(col,'column_height.txt', format='fixed_width', delimiter=" ", names=['year', 'month', 'day', 'hour', 'minute', 'top_height[m]','top_height_above_vent[m]', 'top_height+radius[m]','top_height+radius_above_vent[m]', 'top_radius[m]', 'bending_angle[deg]','vent_height[m]'], overwrite=True)  
+ascii.write(col,'column_height.txt', format='fixed_width', delimiter=" ", names=['year', 'month', 'day', 'hour', 'minute', 'top_height[m]','top_height_above_vent[m]', 'top_height+radius[m]','top_height+radius_above_vent[m]', 'top_radius[m]', 'bending_angle[deg]','vent_height[m]'], overwrite=True)
 
 subprocess.call("rm plume_model.temp1", shell=True) 
 subprocess.call("rm plume_model.temp2", shell=True) 
