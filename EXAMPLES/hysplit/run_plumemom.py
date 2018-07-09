@@ -164,8 +164,6 @@ if 'vent_velocity' in locals():
 
     else:
 
-        filedata = filedata.replace("{inversion_flag}", 'F' )
-        filedata = filedata.replace("{plume_height}", '-1.0' )
         vent_velocity = np.ones(n_runs)*vent_velocity
 
 
