@@ -556,9 +556,10 @@ for i in range(npart):
     # the diameter should be converted to microns (as required by hysplit) from millimeters
     if ( shapefactor[i] < 1.0 ):
         file_control.writelines('%f %f %f \n'%(1000.0*diam[i],density[i],-shapefactor[i]))#50.0 6.0 1.0
+        #file_control.writelines('%f %f %f \n'%(0,0,0))#50.0 6.0 1.0
     else:
-        file_control.writelines('%f %f %f \n'%(1000.0*diam[i],density[i],shapefactor[i]))#50.0 6.0 1.0
-        
+        #file_control.writelines('%f %f %f \n'%(0,0,0))#50.0 6.0 1.0
+        file_control.writelines('%f %f %f \n'%(1000.0*diam[i],density[i],shapefactor[i]))#50.0 6.0 1.0        
     # Deposition velocity (m/s), Pollutant molecular weight (Gram/Mole), Surface Reactivity Ratio, Diffusivity  Ratio, Effective Henry's Constant
     file_control.writelines('0.0 0.0 0.0 0.0 0.0 \n')#0 0.0 0.0 0.0 0.0
     # file_control.writelines('1.0 0.0 0.0 0.0 0.0 \n')#0 0.0 0.0 0.0 0.0

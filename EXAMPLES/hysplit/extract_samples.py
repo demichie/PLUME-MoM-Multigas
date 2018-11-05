@@ -11,6 +11,28 @@ import pylab as plot
 
 from input_file import *
 
+f1=open('./con2stn.inp', 'w+')
+
+
+sampled_deposit = np.zeros((100,1))
+
+for i in range(0,100):
+    checkP = 'P'+'{:02d}'.format(i)
+    if (checkP in vars()):
+        print '{:03d}'.format(i),'{:15.10f}'.format(eval(checkP)[0]),'{:15.10f}'.format(eval(checkP)[1])
+
+        f1.write('{:03d}'.format(i)+'{:15.10f}'.format(eval(checkP)[0])+'{:15.10f}'.format(eval(checkP)[1]))
+        f1.write("\n")
+
+        if len(eval(checkP))==3:
+
+            sampled_deposit[i-1] =eval(checkP)[2]
+
+f1.close()
+
+ 
+#'a' in vars() or 'a' in globals()
+
 INDEX, LAT, LON = np.loadtxt('con2stn.inp',skiprows=0, unpack=True)
 
 if isinstance(INDEX, (np.ndarray) ):
@@ -69,10 +91,29 @@ deposit_file = 'sample_deposit'
 deposit_file_total = deposit_file+'_total.txt'
 ftot = open(deposit_file_total,'wb')
 
+chi_squared = 0.0
+chi_squared_j = 0.0
 
 for j in range(nsampl):
 
-    ftot.write(str( np.sum(loading[nblocks-1,j,:]) )+'\n')
+    checkP = 'P'+'{:02d}'.format(j+1)
+
+    sim_deposit = np.sum(loading[nblocks-1,j,:]) 
+
+    if ( sampled_deposit[j]>0 ):
+    
+        chi_squared_j = ( np.sum(loading[nblocks-1,j,:]) - sampled_deposit[j] )**2 / sampled_deposit[j]
+        ftot.write('{:15.10f}'.format(eval(checkP)[0])+'{:15.10f}'.format(eval(checkP)[1])  \
+                   +'{:18.10f}'.format(sim_deposit)+'{:20.10f}'.format(chi_squared_j[0])+'\n')
+
+        chi_squared += chi_squared_j
+
+    else:
+
+
+        ftot.write('{:15.10f}'.format(eval(checkP)[0])+'{:15.10f}'.format(eval(checkP)[1])  \
+                   +'{:15.10f}'.format(sim_deposit)+'\n')
+
 
     if ( np.sum(loading[nblocks-1,j,:]) > 0.0 ):
 
@@ -82,17 +123,25 @@ for j in range(nsampl):
         stringj = "Loc %s (%s,%s), Loading=%.2e [kg/m2]" % (str(j+1), str(LAT[j]), str(LON[j]),np.sum(loading[nblocks-1,j,:]) )
         legend_strings.append(stringj)
 
-        deposit_file_j = deposit_file+str(j)+'.txt'
+        deposit_file_j = deposit_file+'{:03d}'.format(j)+'.txt'
         f = open(deposit_file_j,'wb')
 
         out_data = np.vstack((np.array(diam_phi), loading[nblocks-1,j,:]/np.sum(loading[nblocks-1,j,:])*100))
-	
+      	
+
         f.write(str(out_data.T))
 
         f.close()
 
 
 ftot.close()
+
+deposit_file_chi = deposit_file+'_chi_squared.txt'
+
+fchi = open(deposit_file_chi,'wb')
+fchi.write('{:20.10f}'.format(chi_squared[0]))
+fchi.close()
+
 
 ax.legend(legend_strings)
 

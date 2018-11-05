@@ -26,6 +26,7 @@ with open('SETUP.part','w') as setup:
     setup.write("kdef="+str(kdef)+"\n")
     setup.write("kbls="+str(kbls)+"\n")
     setup.write("kblt="+str(kblt)+"\n")
+    setup.write("cmass="+str(cmass)+"\n")
     setup.write('/ \n')
 setup.close()
 

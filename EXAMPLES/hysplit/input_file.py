@@ -1,27 +1,27 @@
 hysplit_dir = "/home/federica/hysplit/trunk"
 plumemom_dir = "/home/federica/Scrivania/PLUME-MoM/PLUME-MoM-Multigas"
-runname = 'etna_test'
-starttime="15 12 03 10 00" # Year,month,day,hour,minute
-endemittime = "15 12 03 12 00"
-endruntime = "15 12 03 14 00"
+runname = 'Tungu_2006'
+starttime="06 08 17 02 00" # Year,month,day,hour,minute
+endemittime = "06 08 17 03 00"
+endruntime = "06 08 17 10 00"
 deltat_plumemom = 3600  # seconds
 
-lat = 37.73   # center latitude of the grid
-lon = 15.00  # center longitude of the grid
+lat = -1.467   # center latitude of the grid
+lon = -78.442  # center longitude of the grid
 model_top = 32000.0
-meteo_file = 'extract_22666.bin'
+meteo_file = 'extract_29460.bin'
 
 spacing_lat = 0.1 # degrees between nodes of the sampling grid
 spacing_lon = 0.1 # degrees between nodes of the sampling grid
-span_lat = 5.00   # the total span of the grid in x direction. For instance, a span of 10 degrees would cover 5 degrees on each side of the center grid location
-span_lon = 5.00   # the total span of the grid in y direction. For instance, a span of 10 degrees would cover 5 degrees on each side of the center grid location
+span_lat = 10.00   # the total span of the grid in x direction. For instance, a span of 10 degrees would cover 5 degrees on each side of the center grid location
+span_lon = 10.00   # the total span of the grid in y direction. For instance, a span of 10 degrees would cover 5 degrees on each side of the center grid location
 
 
-vent_lat = 37.73  	# vent latitude
-vent_lon = 15.00       # vent longitude
-vent_height = 3300.00    # vent height above sea level (it can be different from ground level of meteo data at vent lat,lon)
-vent_velocity = 100.0
-log10_mfr = 5.10
+vent_lat = -1.467  	# vent latitude
+vent_lon = -78.442       # vent longitude
+vent_height = 5023.00    # vent height above sea level (it can be different from ground level of meteo data at vent lat,lon)
+vent_velocity = 200.0
+log10_mfr = 6.30
 
 # volcanic gas parameters
 ngas = 2   # in addition to H2O
@@ -44,85 +44,81 @@ added_water_mass_fraction =  0.1
 
 # hysplit parameters
 deltaz_release = 200.0
-ncloud = 1
+ncloud = 5
 
-# setup.cfg parameters
-kmsl=1  	# starting heights default to AGL=0 or MSL=1
-ninit=1  	# particle initialization(0-none; 1-once; 2-add; 3-replace)
-ndump=1  	# dump particles to/from file 0-none or nhrs-output intervall
-ncycl=1 	# pardump output cycle time
+
+# SETUP parameters
+kmsl = 0  	# starting heights default to AGL=0 or MSL=1 *** NOTE: please do not change it (kmsl=0) *** 
+ninit = 1  	# particle initialization(0-none; 1-once; 2-add; 3-replace)
+ndump = 1  	# dump particles to/from file 0-none or nhrs-output intervall
+ncycl = 1 	# pardump output cycle time
 numpar = 50000	# number of puffs or particles to released per cycle
-maxpar = 100000 # maximum number of particles carried in simulation
-initd = 0 	# initial distribution, particle, puff, or combination.  0 = 3D particle (DEFAULT); 1 = Gh-THv; 2 = THh-THv; 3 = Gh-Pv; 4 = THh-Pv
-delt = 10 	# hysplit integration step (minutes)
+maxpar = 1000000 # maximum number of particles carried in simulation
+initd = 3 	# initial distribution, particle, puff, or combination.  0 = 3D particle (DEFAULT); 1 = Gh-THv; 2 = THh-THv; 3 = Gh-Pv; 4 = THh-Pv *** NOTE: please use initd=0 or initd=3 *** 
+delt = 60	# hysplit integration step (minutes) 
 pinpf = ''
-kmixd = 0       # flag for boundary layer depth. Default value, see HYSPLIT used guide
-kmix0 = 250     # minimum mixing depth. Default value, see HYSPLIT used guide
-kzmix = 0       # Vertical Mixing Profile. Default value, see HYSPLIT used guide
-kdef = 0        # Horizontal Turbulence. Default value, see HYSPLIT used guide
-kbls = 1        # Boundary Layer Stability. Default value, see HYSPLIT used guide
-kblt = 2        # Vertical Turbulence. Default value, see HYSPLIT used guide
+kmixd = 0       # flag for boundary layer depth. Default value, see HYSPLIT user guide
+kmix0 = 250     # minimum mixing depth. Default value, see HYSPLIT user guide
+kzmix = 0       # Vertical Mixing Profile. Default value, see HYSPLIT user guide
+kdef = 0        # Horizontal Turbulence. Default value, see HYSPLIT user guide
+kbls = 1        # Boundary Layer Stability. Default value, see HYSPLIT user guide
+kblt = 2        # Vertical Turbulence. Default value, see HYSPLIT user guide
+cmass = 0       # Compute grid concentrations (cmass=0) or grid mass (cmass=1) *** NOTE: please do not change it (cmass=0) *** 
 
 # CONTROL parameters
-#SAMPLING INTERVAL
-SI_TYPE = 0 # Avg:0 Now:1 Max:2
-SI_HOUR = 1 # hrs
-SI_MINUTE = 0 # min
-#HEIGHT OF EACH CONCENTRATION LEVEL (m-msl)
-H_LEVELS = '0 30000'
 
+#SAMPLING INTERVAL
+SI_TYPE = 0 # Avg:0 Now:1 Max:2 *** NOTE: please set (0) for delt not equal to SI_HOUR(or SI_MINUTE) ***
+SI_HOUR = 1 # hrs *** NOTE: see above *** 
+SI_MINUTE = 0 # min *** NOTE: see above *** 
+
+#HEIGHT OF EACH CONCENTRATION LEVEL (m-msl)
+H_LEVELS = '0  30000'  
 
 
 # particles parameters
-npart = 9
-diam1 = 0.000004
-rho1 = 2200
+npart = 10
+diam1 = 0.00025
+rho1 = 2478
 diam2 = 0.002
-rho2 = 1800
+rho2 = 1607
 cp_part = 1610
 shapefactor = 0.6
 
 
-
-
-# Fuego (subplinian)
-#partial_mass_fractions = [	0.07, 	0.12, 	0.27,	0.265, 	0.16, 	0.045,	0.02, 	0.025,	0.0125,	0.0075,	0.005 ]
-#diam_phi = 		 [ 	-2 ,	-1 , 	0 ,	1 , 	2 , 	3 , 	4 , 	5 , 	6 , 	7 , 	8 ]	
-
-# Ruapehu (subplinian)
-#partial_mass_fractions = [	0.05, 	0.09, 	0.14 ,	0.13, 	0.155,	0.15,	0.10, 	0.08,	0.03,	0.02,	0.01,	0.005,	0.0025,	0.0013,	0.0012 	]
-#diam_phi = 		 [ 	-4 ,	-3 , 	-2 ,	-1 , 	0 , 	1 , 	2 , 	3 , 	4 , 	5 , 	6 ,	7 ,	8,	9,	10	]	
-
-# Stromboli (violent strombolian, 2003)
-#partial_mass_fractions = [	0.05, 	0.05, 	0.03,	0.10, 	0.30,	0.255,	0.115, 	0.045,	0.055]
-#diam_phi = 		 [ 	-4 ,	-3 , 	-2 ,	-1 , 	0 , 	1 , 	2 , 	3 , 	4 ]	
-
-# Cordon Caulle (subplininan, 2011)
-#partial_mass_fractions = [	0.13, 	0.155, 	0.164,	0.146, 	0.093,	0.093,	0.018, 	0.014,	0.031,	0.029,	0.022,	0.015,	0.012,	0.007,	0.005	]
-#diam_phi = 		 [ 	-4 ,	-3 , 	-2 ,	-1 , 	0 , 	1 , 	2 , 	3 , 	4 , 	5 , 	6 ,	7 ,	8,	9,	10	]	
-
-# Eyjafjallajokull (VEI4, 2010)
-#partial_mass_fractions = [	0.055,	0.095, 	0.10,	0.16,	0.13, 	0.11,	0.09,	0.085,	0.065,	0.05,	0.03,	0.01,	0.02	]
-#diam_phi = 		 [ 	-2 ,	-1 , 	0 , 	1 , 	2 , 	3 , 	4 , 	5 , 	6 ,	7 ,	8,	9,	10	]	
-
-# Vesuvio (subplinian, 1631)
-#partial_mass_fractions = [	0.04, 	0.07, 	0.06,	0.06, 	0.12,	0.17,	0.10, 	0.06,	0.07,	0.09,	0.09,	0.05,	0.01	]
-#diam_phi = 		 [ 	-4 ,	-3 , 	-2 ,	-1 , 	0 , 	1 , 	2 , 	3 , 	4 , 	5 , 	6 ,	7 ,	8,	]	
-
-# Etna (violent strmobolian, 2002)
-partial_mass_fractions = [	0.020, 	0.090, 	0.140,	0.240, 	0.195,	0.170,	0.085, 	0.035,	0.025	]
-diam_phi = 		 [ 	-3 , 	-2 ,	-1 , 	0 , 	1 , 	2 , 	3 , 	4 , 	5	]	
-
-# Vesuvio (plinian, 79)
-#partial_mass_fractions = [	0.055,	0.075, 	0.12, 	0.125,	0.13, 	0.15,	0.095,	0.08, 	0.045,	0.135	]
-#diam_phi = 		 [ 	-4 ,	-3 , 	-2 ,	-1 , 	0 , 	1 , 	2 , 	3 , 	4 , 	5 	]	
-
+# Tungurahua (subplinian, 2006)
+partial_mass_fractions = [	0.0054,	0.0249,	0.0611,	0.0921,	0.1078,	0.1416,	0.2435,	0.2004,	0.0894,	0.0338	]
+diam_phi = 		 [	-5,	-4,	-3,	-2,	-1,	0,	1,	2,	3,	4	]
 
 
 
 #SAMPLING POINTS
-P01=[37.6,15.2]
-P02=[37.6,15.0]
-P03=[37.5,15.2]
+P01=[-1.431729583, -78.51587596, 10]
+P02=[-1.453208011, -78.51823269, 10]
+P03=[-1.362751501, -78.59156810, 10]
+P04=[-1.413923593, -78.60159360, 10]
+P05=[-1.452045387, -78.56266409, 10]
+P06=[-1.461402861, -78.57294680, 10]
+P07=[-1.437780810, -78.57855834, 10]
+P08=[-1.375585836, -78.60819772, 10]
+P09=[-1.459281046, -78.61722847, 10]
+P10=[-1.416002539, -78.61897976, 10]
+P11=[-1.433577158, -78.60376483, 10]
+P12=[-1.438337576, -78.59212876, 10]
+P13=[-1.470228801, -78.52723114, 10]
+P14=[-1.468298323, -78.58003480, 10]
+P15=[-1.488537093, -78.60500906, 10]
+P16=[-1.497923643, -78.57572740, 10]
+P17=[-1.507519200, -78.58842599, 10]
+P18=[-1.517759162, -78.59527683, 10]
+P19=[-1.510116778, -78.56719037, 10]
+P20=[-1.512711575, -78.54376354, 10]
+P21=[-1.488400604, -78.56311872, 10]
+P22=[-1.493296750, -78.54428815, 10]
+
+
+
+
+
 
 

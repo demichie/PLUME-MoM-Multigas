@@ -44,9 +44,9 @@ echo "-------------- exporting plots ---------------"
 
 echo "'PARTICLES &','### $0 ### &'" >LABELS.CFG
 
-#${MDL}/exec/parxplot -i$PDUMP_PART -k1 -z20 -j${MDL}/graphics/arlmap -oparxplot_part.ps
+${MDL}/exec/parxplot -i$PDUMP_PART -k1 -z20 -j${MDL}/graphics/arlmap -oparxplot_part.ps
 
-#${MDL}/exec/par2asc -i$PDUMP_PART -oPARDUMP_PART.txt 
+${MDL}/exec/par2asc -i$PDUMP_PART -oPARDUMP_PART.txt 
     
 ${MDL}/exec/concplot -i$DUMP_PART -j${MDL}/graphics/arlmap -s0 -z20 -d1 -ukg -oconcplot_part.ps
 
