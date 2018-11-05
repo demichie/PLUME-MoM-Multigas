@@ -50,6 +50,9 @@ block_length = nsampl * npart
 
 print 'nsampl',nsampl,'block_length',block_length
 
+sampling_cmd = hysplit_dir+'/exec/con2stn -i'+'cdumpcum_part_'+runname+' -scon2stn.inp -d0 -p0 -xi -z1 -r0 -ocon2stn.txt'
+
+os.system(sampling_cmd)
 
 con2stn = np.loadtxt('con2stn.txt',skiprows=1)
 
