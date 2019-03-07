@@ -2,17 +2,29 @@ import numpy as np
 import sys
 from haversine import haversine
 import os
+import datetime
 
-from input_file import *
+"""
 
+The routine computes the solid mass from the outcomes of the simulation done by HYSPLIT
+
+"""
+
+
+filename = "partial_mass.part"
+
+file=open(filename,'w')
 
 GROUND=[]
 AIR=[]
 
 #print npart, n_levels, H_LEVELS
-print ' '
-print '*** MASS ON THE GROUND ***'
-print ' '
+file.writelines(' \n')
+file.writelines('*** MASS ON THE GROUND *** \n')
+file.writelines(' \n')
+#print ' '
+#print '*** MASS ON THE GROUND ***'
+#print ' '
 # Check mass deposited on the ground
 
 fname = 'CON2ASC.GROUND'
@@ -25,7 +37,9 @@ with open(fname) as f:
          time = line.strip()[-4:]
          day = line.strip()[-8:-5]
            
-         print ' ---> day and time ',day,' ',time,' '
+         #print ' ---> day and time ',day,' ',time,' '
+         file.writelines(' ---> day and time '+str(day)+' '+str(time)+' \n')
+
 
          f = open(filename)
          data = f.read()
@@ -82,8 +96,10 @@ with open(fname) as f:
          
          if a.shape[0] == 0 :
          
-             print 'No mass deposited at ',time
-        
+             #print 'No mass deposited at ',time
+             file.writelines('No mass deposited at '+str(time)+'\n')        
+
+
          else:
 
              a = np.asarray(a) 
@@ -148,20 +164,27 @@ with open(fname) as f:
 
                      total_mass = total_mass +  mass_on_the_ground 
 
-                     print 'class CL',str(i+1).zfill(2),' mass ','%.1e'%mass_on_the_ground,' kg'                  
+                     #print 'class CL',str(i+1).zfill(2),' mass ','%.1e'%mass_on_the_ground,' kg'                  
+                     #file.writelines('class CL'+str(i+1).zfill(2)+' mass ','%.1e'%mass_on_the_ground,' kg \n')
 
+                     file.writelines("class CL %d mass %.1e kg\n"%(i+1,mass_on_the_ground))
                      column = column + n_levels
 
-         print 'Total mass deposited ','%.1e'%total_mass,' kg'
+         #print 'Total mass deposited ','%.1e'%total_mass,' kg'
+         file.writelines('Total mass deposited %.1e kg \n'%(total_mass))
 
          GROUND.append([int(time),int(day),total_mass])
 
          os.remove(filename)
          
-         print ' '
+         #print ' '
+         file.writelines(' \n')
 
-print '*** MASS IN THE AIR ***'
-print ' '
+#print '*** MASS IN THE AIR ***'
+
+file.writelines('*** MASS IN THE AIR *** \n')
+#print ' '
+file.writelines(' \n')
 # Check mass still in the atmosphere
 
 fname = 'CON2ASC.AIR'
@@ -177,15 +200,19 @@ with open(fname) as f:
          day = line.strip()[-8:-5]
 
 
-         print ' ---> day and time ',day,' ',time,' '
+         #print ' ---> day and time ',day,' ',time,' '
+         file.writelines(' ---> day and time '+str(day)+' '+str(time)+' \n')
+
          a = np.loadtxt(filename, skiprows = 1)
 
-         print 'filename ',filename
+         #print 'filename ',filename 
+         file.writelines('filename '+str(filename)+'\n')
 
          
          if a.shape[0] == 0 :
          
-             print 'No in the atmosphere at ',time
+             #print 'No in the atmosphere at ',time
+             file.writelines('No in the atmosphere at ',time,'\n')  
         
          else:
 
@@ -267,18 +294,21 @@ with open(fname) as f:
 
                          #print 'class CL',str(i+1).zfill(2),' level ',H_LEVELS[j+1,0],'  mass ',mass_in_the_air,' kg'   
 
-                     print 'class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg'   
-
-                         
+                     #print 'class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg'   
+                     #file.writelines('class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg \n')
+                     file.writelines('class CL %d mass %.1e kg \n'%(i+1,mass_in_the_air))    
 
                      column = column + n_levels
 
               
-         print 'Total mass in the air ', '%.1e'%total_mass ,' kg'
-         print ' '
+         #print 'Total mass in the air ', '%.1e'%total_mass ,' kg'
+         file.writelines('Total mass in the air %.1e kg \n'%(total_mass))
+         #print ' '
           
          AIR.append([total_mass])
          os.remove(filename)
+
+file.close()
 
 GROUND = np.asarray(GROUND)
 AIR = np.asarray(AIR)
@@ -287,19 +317,25 @@ file_mass=open('total_mass.part','w')
 
 file_mass.writelines("Day    Time    Mass Deposited[kg]    Mass in the Air[kg]        Tot Mass[kg]\n")
 
+print "***------***"
+
+print "--> Solid particle mass from HYSPLIT"
 
 for i in range(GROUND.shape[0]):
 
-    #print '*** day', int(GROUND[i,1]),' time ',str(int(GROUND[i,0])).zfill(4),' ***'
+    tot = GROUND[i,2] + AIR[i,0]
+    print ' - day %d time %d : %.1e'%(int(GROUND[i,1]),int(GROUND[i,0]),tot)
     #print 'Mass deposited ', '%.1e'%GROUND[i,2]
     #print 'Mass in the air ',AIR[i,0]
-    #print 'Mass in the domain ',GROUND[i,2] + AIR[i,0]
-    tot = GROUND[i,2] + AIR[i,0]
+    #TOT = GROUND[i,2] + AIR[i,0]
+    #print 'Mass in the domain %.1e'%(TOT)
+
     
     file_mass.writelines("%d    %04d    %.1e               %.1e                    %.1e\n"%(GROUND[i,1],GROUND[i,0],GROUND[i,2],AIR[i,0],tot))
+
     
 file_mass.close()
 
-          
+print "***------***"
 
 

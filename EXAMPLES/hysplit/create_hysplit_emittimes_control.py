@@ -23,9 +23,13 @@ def round_minutes(dt, direction, resolution):
 
 time_format = "%y %m %d %H %M"
 
+starttime_hhmm = datetime.datetime.strptime(starttime,time_format)
+starttime_round = round_minutes(starttime_hhmm, 'down', 60) # arrotonda per difetto starttime
 
-# compute the total simulation time
-runtime = datetime.datetime.strptime(endruntime,time_format) - datetime.datetime.strptime(starttime,time_format)
+endruntime_hhmm = datetime.datetime.strptime(endruntime,time_format)
+endruntime_round = round_minutes(endruntime_hhmm, 'up', 60) # arrotonda per eccesso endemittime
+
+runtime=endruntime_round-starttime_round
 
 d = datetime.datetime(2000,1,1) + runtime
 runtime_hh = '{0:02}'.format( int(runtime.total_seconds()//3600) )
@@ -43,15 +47,11 @@ endemittime_round = round_minutes(endemittime_hhmm, 'up', 60) # arrotonda per ec
 endemittime_round_down = round_minutes(endemittime_hhmm, 'down', 60)  # arrotonda per difettos endemittime
 
 runtime=endemittime_round-starttime_round
-n_runs = np.int(np.floor( runtime.total_seconds() / deltat_plumemom ) )
 
-#if ( deltat_plumemom * n_runs == runtime.total_seconds() ):
-
-#    n_runs = n_runs-1
+n_runs = np.int(np.ceil( runtime.total_seconds() / deltat_plumemom ) )
 
 d = datetime.datetime(2000,1,1) + datetime.timedelta(seconds=deltat_plumemom)
 duration_hhmm = str(d.strftime("%H%M"))
-
 
 duration_h=(int(d.strftime("%H%M")[0:2])+(int(d.strftime("%H%M")[2:4])/float(60)))
 
@@ -195,12 +195,25 @@ First EMITTIMES.part Block
 plume_hy = runname + '_{0:03}'.format(1)+'.hy'
 
 # time of the block
-timei =  datetime.datetime.strptime(starttime,time_format)
+#timei =  datetime.datetime.strptime(starttime,time_format)
 
-timei_end =  starttime_round+datetime.timedelta(seconds=deltat_plumemom)
+#timei_end =  starttime_round+datetime.timedelta(seconds=deltat_plumemom)
 
-d = datetime.datetime(2000,1,1) + (timei_end-timei)
-duration_hhmm = str(d.strftime("%H%M"))
+if n_runs == 1:
+
+    timei =  datetime.datetime.strptime(starttime,time_format)
+    timei_end =  datetime.datetime.strptime(endemittime,time_format)
+
+    d = datetime.datetime(2000,1,1) + (timei_end-timei)
+    duration_hhmm = str(d.strftime("%H%M"))
+
+else:
+
+    timei =  datetime.datetime.strptime(starttime,time_format)
+    timei_end =  starttime_round+datetime.timedelta(seconds=deltat_plumemom)
+
+    d = datetime.datetime(2000,1,1) + (timei_end-timei)
+    duration_hhmm = str(d.strftime("%H%M"))
 
 print 'Block 1',duration_hhmm
 
@@ -598,12 +611,25 @@ First EMITTIMES.part Block
 plume_hy = runname + '_{0:03}'.format(1)+'_volcgas.hy'
 
 # time of the block
-timei =  datetime.datetime.strptime(starttime,time_format)
+#timei =  datetime.datetime.strptime(starttime,time_format)
 
-timei_end =  starttime_round+datetime.timedelta(seconds=deltat_plumemom)
+#timei_end =  starttime_round+datetime.timedelta(seconds=deltat_plumemom)
 
-d = datetime.datetime(2000,1,1) + (timei_end-timei)
-duration_hhmm = str(d.strftime("%H%M"))
+if n_runs == 1:
+
+    timei =  datetime.datetime.strptime(starttime,time_format)
+    timei_end =  datetime.datetime.strptime(endemittime,time_format)
+
+    d = datetime.datetime(2000,1,1) + (timei_end-timei)
+    duration_hhmm = str(d.strftime("%H%M"))
+
+else:
+
+    timei =  datetime.datetime.strptime(starttime,time_format)
+    timei_end =  starttime_round+datetime.timedelta(seconds=deltat_plumemom)
+
+    d = datetime.datetime(2000,1,1) + (timei_end-timei)
+    duration_hhmm = str(d.strftime("%H%M"))
 
 print 'Block 1',duration_hhmm
 

@@ -6,8 +6,10 @@ from input_file import *
 
 filelist = glob.glob(runname+'*')
 for f in filelist:
-    os.remove(f)
-
+    try:
+        os.remove(f)
+    except (OSError):
+        pass
 
 filelist = glob.glob('atm*')
 for f in filelist:

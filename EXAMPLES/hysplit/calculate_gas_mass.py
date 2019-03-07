@@ -3,6 +3,17 @@ import sys
 from haversine import haversine
 import os
 
+
+"""
+
+The routine computes the gas mass (no H20) from the outcomes of the simulation done by HYSPLIT
+
+"""
+
+filename = "partial_mass.gas"
+
+file=open(filename,'w')
+
 AIR=[]
 
 #print ngas, n_levels, H_LEVELS
@@ -21,7 +32,8 @@ with open(fname) as f:
          time = line.strip()[-4:]
          day = line.strip()[-8:-5]
            
-         print ' ---> day and time ',day,' ',time,' '
+         #print ' ---> day and time ',day,' ',time,' '
+         file.writelines(' ---> day and time '+str(day)+' '+str(time)+' \n')
 
          f = open(filename)
          data = f.read()
@@ -78,7 +90,8 @@ with open(fname) as f:
          
          if a.shape[0] == 0 :
          
-             print 'No in the atmosphere at ',time
+             #print 'No in the atmosphere at ',time
+             file.writelines('No mass deposited at '+str(time)+'\n')   
         
          else:
 
@@ -155,18 +168,20 @@ with open(fname) as f:
 
                          #print 'class CL',str(i+1).zfill(2),' level ',H_LEVELS[j+1,0],'  mass ',mass_in_the_air,' kg'   
 
-                     print 'class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg'   
-
+                     #print 'class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg'   
+                     file.writelines("component G %d mass %.1e kg\n"%(i+1,mass_in_the_air))
                          
 
                      column = column + n_levels
 
-              
-         print 'Total mass in the air ', '%.1e'%total_mass ,' kg'
-         print ' '
+         file.writelines('Total mass in the air %.1e kg \n'%(total_mass))              
+         #print 'Total mass in the air ', '%.1e'%total_mass ,' kg'
+         #print ' '
           
          AIR.append([day,time,total_mass])
          os.remove(filename)
+
+file.close()
 
 AIR = np.asarray(AIR)
 AIR = AIR.reshape((-1,3))
@@ -175,18 +190,20 @@ file_mass=open('total_mass.gas','w')
 
 file_mass.writelines("Day    Time    Mass in the Air[kg]\n")
 
+print "--> Gas mass from HYSPLIT"
+
 for i in range(AIR.shape[0]):
 
     #print '*** day', int(GROUND[i,1]),' time ',str(int(GROUND[i,0])).zfill(4),' ***'
     #print 'Mass deposited ', '%.1e'%GROUND[i,2]
     #print 'Mass in the air ',AIR[i,0]
     #print 'Mass in the domain ',GROUND[i,2] + AIR[i,0]
-    
+    print ' - day %d time %d : %.1e'%(int(AIR[i,0]),int(AIR[i,1]),float(AIR[i,2]))    
     
     file_mass.writelines("%d    %04d    %.1e\n"%(int(AIR[i,0]),int(AIR[i,1]),float(AIR[i,2])))
     
 file_mass.close()
-
+print "***------***"
           
 
 

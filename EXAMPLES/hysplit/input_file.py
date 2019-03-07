@@ -1,8 +1,8 @@
-hysplit_dir = "/home/federica/hysplit/trunk"
-plumemom_dir = "/home/federica/Scrivania/PLUME-MoM/PLUME-MoM-Multigas"
-runname = 'Tungu_2006'
+hysplit_dir = "/home/utente/hysplit"
+plumemom_dir = "/home/utente/Scrivania/Codes/PLUME-MoM-Multigas"
+runname = 'test'
 starttime="06 08 17 02 00" # Year,month,day,hour,minute
-endemittime = "06 08 17 03 00"
+endemittime = "06 08 17 04 00"
 endruntime = "06 08 17 10 00"
 deltat_plumemom = 3600  # seconds
 
@@ -68,9 +68,9 @@ cmass = 0       # Compute grid concentrations (cmass=0) or grid mass (cmass=1) *
 # CONTROL parameters
 
 #SAMPLING INTERVAL
-SI_TYPE = 0 # Avg:0 Now:1 Max:2 *** NOTE: please set (0) for delt not equal to SI_HOUR(or SI_MINUTE) ***
-SI_HOUR = 1 # hrs *** NOTE: see above *** 
-SI_MINUTE = 0 # min *** NOTE: see above *** 
+SI_TYPE = 0 # Avg:0 Now:1 Max:2 
+SI_HOUR = 1 # hrs 
+SI_MINUTE = 0 # min 
 
 #HEIGHT OF EACH CONCENTRATION LEVEL (m-msl)
 H_LEVELS = '0  30000'  

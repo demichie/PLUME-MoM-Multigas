@@ -3,7 +3,7 @@
 echo "### $0 ###"
 
 
-FILE="partial_mass.part"
+
 
 #-------------------------------------------------------------
 result=$(grep -i 'hysplit_dir' input_file.py | cut -c 15-)
@@ -39,11 +39,15 @@ ${MDL}/exec/con2asc -i$DUMP_ACC_PART -t -x -z
 
 mv CON2ASC.OUT CON2ASC.GROUND
 
-python calculate_solid_mass.py > $FILE
+python calculate_solid_mass.py
 
 rm CON2ASC.GROUND
 rm CON2ASC.AIR
 
 
 echo
-echo "Files created: 1. partial_mass.part (mass for the single particle classes) 2.total_mass.part (total solid mass in the domain)" 
+echo "Files created: 1. partial_mass.part (loading of the single particle classes) 2.total_mass.part (total solid particle loading in the domain)" 
+
+
+
+

@@ -113,8 +113,13 @@ print 'endemittime',endemittime_hhmm,endemittime_round
 
 
 runtime=endemittime_round-starttime_round # numero ore arrotondate tra inizio e fine emissione 
-n_runs = np.int(np.floor( runtime.total_seconds() / deltat_plumemom ) ) # numero run di PlumeMoM
+#n_runs = np.int(np.floor( runtime.total_seconds() / deltat_plumemom ) ) # numero run di PlumeMoM
+n_runs = np.int(np.ceil( runtime.total_seconds() / deltat_plumemom ) ) # numero run di PlumeMoM
 
+
+print 'runtime.total_seconds() ',runtime.total_seconds()
+
+print 'n_runs ', n_runs
 
 if 'plume_height' in locals():
 
@@ -178,7 +183,7 @@ col=[]
 for i in range(n_runs):
 
     runnamenew = runname + '_{0:03}'.format(i+1)
-    print 'runname',runnamenew
+    print '------------>runname',runnamenew
 
     f = open('plume_model.temp1','r')
     filedata = f.read()
@@ -226,7 +231,7 @@ for i in range(n_runs):
 
     subprocess.call(plumemom_dir+"/bin/PLUMEMoM", shell=True) 
 
-    subprocess.call(plumemom_dir+"/bin/PLUMEMoM", shell=True) 
+    #subprocess.call(plumemom_dir+"/bin/PLUMEMoM", shell=True) Uncommented on 18/12/2018 federica
 
     output = np.loadtxt(str(runnamenew)+'.col', skiprows = 1)
     

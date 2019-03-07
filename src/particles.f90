@@ -1226,14 +1226,14 @@ CONTAINS
     IF ( lw_mf + ice_mf .EQ. 0.D0 ) THEN
     
        ! total birth rate moments for the i_part family (original - org)
-       birth_mom(i_part,i_mom) = 0.D0
+       birth_mom = 0.D0
        ! total death rate moments for the i_part family (original - org)
-       death_mom(i_part,i_mom) = 0.D0
+       death_mom = 0.D0
        
        ! total birth rate moments for the j_part family (nonOrg)
-       birth_mom(j_part,i_mom) = 0.D0
+       birth_mom = 0.D0
        ! total death rate moments for the j_part family (nonOrg)
-       death_mom(j_part,i_mom) = 0.D0
+       death_mom = 0.D0
 
        RETURN
 
