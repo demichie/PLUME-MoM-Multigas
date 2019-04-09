@@ -205,7 +205,6 @@ with open(fname) as f:
 
          a = np.loadtxt(filename, skiprows = 1)
 
-         #print 'filename ',filename 
          file.writelines('filename '+str(filename)+'\n')
 
          
@@ -273,13 +272,12 @@ with open(fname) as f:
 
              column = 0
 
+
              for i in range(npart):
 
+                     mass_part=0
+
                      for j in range(n_levels-1):
-
-                         #print 'j ',j
-
-                         #print  column + j + 1
   
                          conc = a[:, column + j + 1]
             
@@ -287,16 +285,21 @@ with open(fname) as f:
                          conc = conc.reshape((-1,1))
 
                          mass_in_the_air = np.sum(conc[:,0] * dist[:,0] * dist[:,1] * (int(H_LEVELS[j+1,0])-int(H_LEVELS[j,0])))
+
                          #mass_in_the_air = np.sum(conc[:,0])
-                         total_mass = total_mass + mass_in_the_air
 
-                         #total_mass = total_mass +  mass_on_the_ground 
+                         mass_part = mass_part + mass_in_the_air
 
+
+                         total_mass = mass_in_the_air +  total_mass
+
+
+                         #print total_mass
                          #print 'class CL',str(i+1).zfill(2),' level ',H_LEVELS[j+1,0],'  mass ',mass_in_the_air,' kg'   
 
-                     #print 'class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg'   
-                     #file.writelines('class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg \n')
-                     file.writelines('class CL %d mass %.1e kg \n'%(i+1,mass_in_the_air))    
+                         #print 'class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg'   
+                         #file.writelines('class CL',str(i+1).zfill(2),'  mass ','%.1e'%mass_in_the_air,' kg \n')
+                     file.writelines('class CL %d mass %.1e kg \n'%(i+1,mass_part))    
 
                      column = column + n_levels
 
@@ -306,7 +309,7 @@ with open(fname) as f:
          #print ' '
           
          AIR.append([total_mass])
-         os.remove(filename)
+         #os.remove(filename)
 
 file.close()
 
