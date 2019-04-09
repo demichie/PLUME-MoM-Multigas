@@ -9,7 +9,12 @@ from matplotlib.pyplot import cm
 from mpl_toolkits.mplot3d import Axes3D
 import easygui
 
-filename = easygui.fileopenbox( filetypes=['*.col'])
+#option 1
+#filename = easygui.fileopenbox( filetypes=['*.col'])
+
+#option 2 (in case option 1 doesn't work)
+from tkFileDialog import askopenfilename
+filenames = askopenfilename(filetypes=[("col files", "*.col")])
 
 filename = filename.split('/')[-1]
 filename = re.sub('\.col$', '', filename)
