@@ -533,7 +533,7 @@ for i in range(n_sect):
 
 
 
-    R = np.eye(3) + mat_v + mat_v**2 * (1 - c) / s**2
+    R = np.eye(3) + mat_v + np.dot(mat_v,mat_v) * (1 - c) / s**2
 
     plume = np.zeros((3,x_plume.shape[0]))
 
