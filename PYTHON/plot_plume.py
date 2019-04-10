@@ -14,7 +14,7 @@ import easygui
 
 #option 2 (in case option 1 doesn't work)
 from tkFileDialog import askopenfilename
-filenames = askopenfilename(filetypes=[("col files", "*.col")])
+filename = askopenfilename(filetypes=[("col files", "*.col")])
 
 filename = filename.split('/')[-1]
 filename = re.sub('\.col$', '', filename)
