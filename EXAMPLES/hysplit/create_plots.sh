@@ -20,6 +20,8 @@ result="${temp#\"}"
 temp="${result%\'}"
 result="${temp#\'}"
 
+ngas=$(grep -i 'ngas' input_file.py | cut -c 8-11)
+
 DUMP_PART="cdump_part_$result"
 
 DUMP_ACC_PART="cdumpcum_part_$result"
@@ -52,15 +54,22 @@ ${MDL}/exec/concplot -i$DUMP_PART -j${MDL}/graphics/arlmap -s0 -z20 -d1 -ukg -oc
 
 ${MDL}/exec/concplot -i$DUMP_ACC_PART -j${MDL}/graphics/arlmap -s0 -t0 -z20 -d1 -ukg -oconcplot_cum_part.ps
 
-echo "'GAS &','### $0 ### &'" >LABELS.CFG
+if [ $ngas -gt 0 ] 
+   then
 
-${MDL}/exec/parxplot -i$PDUMP_GAS -k1 -z20 -j${MDL}/graphics/arlmap -oparxplot_gas.ps
+   echo "'GAS &','### $0 ### &'" >LABELS.CFG
 
-${MDL}/exec/par2asc -i$PDUMP_GAS -oPARDUMP_GAS.txt 
+   ${MDL}/exec/parxplot -i$PDUMP_GAS -k1 -z20 -j${MDL}/graphics/arlmap -oparxplot_gas.ps
+
+   ${MDL}/exec/par2asc -i$PDUMP_GAS -oPARDUMP_GAS.txt 
     
-${MDL}/exec/concplot -i$DUMP_GAS -j${MDL}/graphics/arlmap -s0 -z20 -d1 -ukg -oconcplot_gas.ps
+   ${MDL}/exec/concplot -i$DUMP_GAS -j${MDL}/graphics/arlmap -s0 -z20 -d1 -ukg -oconcplot_gas.ps
 
-#${MDL}/exec/concplot -i$DUMP_ACC_GAS -j${MDL}/graphics/arlmap -s0 -t0 -z20 -d1 -ukg -oconcplot_cum_gas.ps
+   else
+
+   echo "ngas: "$ngas
+
+fi
 
 
 rm -f LABELS.CFG

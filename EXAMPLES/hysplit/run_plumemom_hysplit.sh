@@ -20,6 +20,8 @@ result="${temp#\"}"
 temp="${result%\'}"
 result="${temp#\'}"
 
+ngas=$(grep -i 'ngas' input_file.py | cut -c 8-11)
+
 DUMP_PART="cdump_part_$result"
 
 DUMP_ACC_PART="cdumpcum_part_$result"
@@ -48,9 +50,14 @@ echo "-------------- particles dispersion simulation ---------------"
 
 ${MDL}/exec/hycs_std part  
 
-echo "-------------- gas dispersion simulation ---------------"
+if [ $ngas -gt 0 ] 
+  then
+  echo "-------------- gas dispersion simulation ---------------"
+  ${MDL}/exec/hycs_std gas  
+  else
+  echo "-------------- skipped gas simulation - ngas: $ngas ---------------"
 
-${MDL}/exec/hycs_std gas  
+fi
 
 echo "-------------- start postprocessing ---------------"
 
@@ -58,9 +65,11 @@ ${MDL}/exec/concacc -i$DUMP_PART -o$DUMP_ACC_PART
 
 ${MDL}/exec/concsum -i$DUMP_ACC_PART -o$DUMP_SUM_PART
 
-${MDL}/exec/concacc -i$DUMP_GAS -o$DUMP_ACC_GAS
-
-${MDL}/exec/concsum -i$DUMP_ACC_GAS -o$DUMP_SUM_GAS
+if [ $ngas -gt 0 ]
+  then
+  ${MDL}/exec/concacc -i$DUMP_GAS -o$DUMP_ACC_GAS
+  ${MDL}/exec/concsum -i$DUMP_ACC_GAS -o$DUMP_SUM_GAS
+fi
 
 echo "-------------- end postprocessing ---------------"
 

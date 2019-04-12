@@ -24,11 +24,11 @@ vent_velocity = 200.0
 log10_mfr = 6.30
 
 # volcanic gas parameters
-ngas = 2   # in addition to H2O
-rvolcgas = [189, 130 ] # CO2 and SO2 R constant [J/kgK]
-cpvolcgas = [844, 640]
-volcgas_mol_wt = [0.044, 0.064]
-volcgas_mass_fraction = [0.05, 0.005]
+ngas = 1   # in addition to H2O
+rvolcgas = [189] # CO2 and SO2 R constant [J/kgK]
+cpvolcgas = [844]
+volcgas_mol_wt = [0.044]
+volcgas_mass_fraction = [0.05]
 
 #initial volcanic water mass fraction
 water_mass_fraction0 = 0.03
@@ -73,7 +73,7 @@ SI_HOUR = 1 # hrs
 SI_MINUTE = 0 # min 
 
 #HEIGHT OF EACH CONCENTRATION LEVEL (m-msl)
-H_LEVELS = '0  30000'  
+H_LEVELS = '0  15000 30000'  
 
 
 # particles parameters

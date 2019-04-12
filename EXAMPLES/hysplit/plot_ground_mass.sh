@@ -27,8 +27,6 @@ DUMP_ACC_PART="cdumpcum_part_$result"
 
 #----------------------------------------------------------
 
-echo "-------------- check mass ---------------"
-
 ${MDL}/exec/con2asc -i$DUMP_ACC_PART -t -x -z
 
 mv CON2ASC.OUT CON2ASC.GROUND
