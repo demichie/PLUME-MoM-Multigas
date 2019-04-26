@@ -37,7 +37,13 @@ for filename in lines:
         os.rename(filename.strip(),filename.strip()+'.air')
 
 # choose the file to plot with a GUI
-filename = easygui.fileopenbox( filetypes=['*.air'])
+
+#option 1
+#filename = easygui.fileopenbox( filetypes=['*.air'])
+
+#option 2 (in case option 1 doesn't work)
+from tkFileDialog import askopenfilename
+filename = askopenfilename(filetypes=[("air files", "*.air")])
 
 
 AIR=[]
@@ -291,11 +297,11 @@ else:
                 plt.ylim(bottom=np.amax(y))
                 plt.ylim(top=np.amin(y))
                 plt.grid()
-                plt.title('Class CL'+str(i+1).zfill(2)+' - H from '+str(H_LEVELS[j,0])+'  to '+str(H_LEVELS[j+1,0])+', mass '+'%.1e'%mass_in_the_air+' kg' )
+                plt.title('Class CL'+str(i+1).zfill(2)+' - H from '+str(H_LEVELS[j,0])+'  to '+str(H_LEVELS[j+1,0])+'\n Mass '+'%.1e'%mass_in_the_air+' kg')
                 clb = plt.colorbar(format=ticker.FuncFormatter(fmt))
                 clb.set_label('Loading (kg/m^3)', labelpad=-40, y=1.05, rotation=0)
 
-                f.savefig(runname+'_CL'+str(i+1)+'_H_'+str(H_LEVELS[j,0])+'_'+str(H_LEVELS[j+1,0])+'_'+day+'_'+time+'.pdf', bbox_inches='tight')
+                f.savefig(runname+'_CL'+str(i+1)+'_H_'+str(H_LEVELS[j,0])+'_'+str(H_LEVELS[j+1,0])+'_'+day+'_'+time+'_CONC.pdf', bbox_inches='tight')
 
             
 
@@ -352,10 +358,10 @@ plt.xlim(left=np.amin(x))
 plt.xlim(right=np.amax(x))
 plt.ylim(bottom=np.amax(y))
 plt.ylim(top=np.amin(y))
-plt.title('Total loading')
+plt.title('Total atmospheric loading')
 clb = plt.colorbar(format=ticker.FuncFormatter(fmt))
 clb.set_label('Loading (kg/m^3)', labelpad=-40, y=1.05, rotation=0)
-f.savefig(runname+'_'+'CL_sum'+'_'+day+'_'+time+'.pdf', bbox_inches='tight')
+f.savefig(runname+'_'+'CL_sum'+'_'+day+'_'+time+'_CONC.pdf', bbox_inches='tight')
 
 # plt.show()        
 
